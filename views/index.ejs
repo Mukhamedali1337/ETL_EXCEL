@@ -1,0 +1,26 @@
+<%- include("partials/header", { title: "Главная", heading: "Портал загрузки данных" }) %>
+
+<div class="home-grid">
+  <a class="home-card" href="/upload">
+    <div class="home-card-icon">📋</div>
+    <h2>Отдел обучения</h2>
+    <p class="muted">Загрузка стандартных шаблонов: журналы, реестры, планы обучения сотрудников.</p>
+    <span class="home-card-link">Перейти →</span>
+  </a>
+
+  <a class="home-card home-card-accent" href="/free-upload">
+    <div class="home-card-icon">📤</div>
+    <h2>Свободная загрузка</h2>
+    <p class="muted">Загрузите любой Excel-файл. Система автоматически определит типы данных и создаст таблицу в базе.</p>
+    <span class="home-card-link">Перейти →</span>
+  </a>
+
+  <a class="home-card home-card-disabled" href="/export">
+    <div class="home-card-icon">📥</div>
+    <h2>Выгрузка данных</h2>
+    <p class="muted">Выберите таблицу и фильтры — скачайте данные в Excel-файл.</p>
+    <span class="home-card-link muted">Скоро →</span>
+  </a>
+</div>
+
+<%- include("partials/footer") %>

@@ -1,0 +1,6 @@
+node_modules/
+.env
+uploads/
+npm-debug.log*
+scripts/ldap-test.js
+.claude/

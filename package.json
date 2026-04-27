@@ -1,0 +1,24 @@
+{
+  "name": "etl-training-portal",
+  "version": "1.0.0",
+  "description": "Internal MVP portal for Excel validation and import into MSSQL.",
+  "main": "src/app.js",
+  "scripts": {
+    "start": "node src/app.js",
+    "dev": "node --watch src/app.js",
+    "db:test": "node scripts/db-test.js"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "bcryptjs": "^2.4.3",
+    "dotenv": "^16.4.5",
+    "ejs": "^3.1.10",
+    "express": "^4.19.2",
+    "express-session": "^1.18.0",
+    "ldapts": "^8.1.7",
+    "memorystore": "^1.6.7",
+    "mssql": "^11.0.1",
+    "multer": "^1.4.5-lts.1",
+    "xlsx": "^0.18.5"
+  }
+}

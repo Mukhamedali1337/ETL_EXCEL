@@ -1,0 +1,83 @@
+<%- include("partials/header", { title: "Журнал загрузок", heading: "Журнал загрузок" }) %>
+<section class="card">
+  <h2>История импортов</h2>
+  <% if (typeof error === "string" && error) { %>
+    <div class="alert alert-error"><%= error %></div>
+  <% } %>
+  <% if (history.length === 0) { %>
+    <p class="muted">Пока нет загрузок.</p>
+  <% } else { %>
+    <div class="history-stack">
+      <% history.forEach((batch) => { %>
+        <article class="history-card">
+          <div class="history-head">
+            <div>
+              <h3>#<%= batch.id %> · <%= batch.original_file_name %></h3>
+              <p class="muted">
+                Загрузил <strong><%= batch.uploaded_by_name %></strong> (<%= batch.uploaded_by %>)
+              </p>
+            </div>
+            <span class="status-pill"><%= batch.status %></span>
+          </div>
+
+          <div class="stats-grid">
+            <div class="stat-box">
+              <strong><%= batch.total_rows %></strong>
+              <span>Всего</span>
+            </div>
+            <div class="stat-box">
+              <strong><%= batch.valid_rows %></strong>
+              <span>Валидных</span>
+            </div>
+            <div class="stat-box">
+              <strong><%= batch.error_rows %></strong>
+              <span>Ошибочных строк</span>
+            </div>
+            <div class="stat-box">
+              <strong><%= batch.inserted_rows %></strong>
+              <span>Записано</span>
+            </div>
+          </div>
+
+          <p class="muted">
+            Создан: <%= new Date(batch.created_at).toLocaleString("ru-RU") %>
+            <% if (batch.completed_at) { %>
+              · Завершен: <%= new Date(batch.completed_at).toLocaleString("ru-RU") %>
+            <% } %>
+          </p>
+
+          <% if (batch.notes) { %>
+            <div class="alert alert-error"><%= batch.notes %></div>
+          <% } %>
+
+          <% if (batch.errors.length > 0) { %>
+            <details>
+              <summary>Показать ошибки (<%= batch.errors.length %>)</summary>
+              <div class="table-wrap">
+                <table>
+                  <thead>
+                    <tr>
+                      <th>Строка</th>
+                      <th>Поле</th>
+                      <th>Ошибка</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    <% batch.errors.forEach((errorItem) => { %>
+                      <tr>
+                        <td><%= errorItem.row_number %></td>
+                        <td><%= errorItem.field_name %></td>
+                        <td><%= errorItem.error_message %></td>
+                      </tr>
+                    <% }) %>
+                  </tbody>
+                </table>
+              </div>
+            </details>
+          <% } %>
+        </article>
+      <% }) %>
+    </div>
+  <% } %>
+</section>
+<%- include("partials/footer") %>

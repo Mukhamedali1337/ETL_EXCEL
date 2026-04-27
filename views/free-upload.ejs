@@ -1,0 +1,152 @@
+<%- include("partials/header", { title: "Свободная загрузка", heading: "Свободная загрузка Excel" }) %>
+
+<% if (error) { %>
+  <div class="alert alert-error" style="margin-bottom:20px;"><%= error %></div>
+<% } %>
+<% if (success) { %>
+  <div class="alert alert-success" style="margin-bottom:20px;"><%= success %></div>
+<% } %>
+
+<% if (typeof skippedRows !== 'undefined' && skippedRows && skippedRows.length > 0) { %>
+  <section class="card" style="margin-bottom:20px;">
+    <h2>Пропущенные строки (<%= skippedRows.length %>)</h2>
+    <p class="muted" style="margin-bottom:12px;">Эти строки не были вставлены — они уже существуют в таблице или являются дублями внутри файла.</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Строка</th>
+            <th>Причина</th>
+            <th>Данные</th>
+          </tr>
+        </thead>
+        <tbody>
+          <% skippedRows.forEach(row => { %>
+            <tr>
+              <td><%= row.rowNumber %></td>
+              <td><%= row.reason %></td>
+              <td class="muted" style="font-size:0.9em;"><%= row.preview %></td>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+  </section>
+<% } %>
+
+<% if (!freePreview) { %>
+
+  <section class="hero-grid">
+    <div class="card">
+      <h2>Как это работает</h2>
+      <ul class="check-list">
+        <li>Загрузите любой Excel-файл (.xlsx или .xls)</li>
+        <li>Имя файла станет именем таблицы в базе данных</li>
+        <li>Заголовки колонок станут именами столбцов</li>
+        <li>Система автоматически определит типы данных</li>
+        <li>Вы можете скорректировать типы перед импортом</li>
+        <li>Если таблица уже существует — данные добавятся к ней</li>
+      </ul>
+    </div>
+
+    <div class="card accent-card">
+      <h2>Загрузить файл</h2>
+      <form method="post" action="/free-upload" enctype="multipart/form-data" class="form-stack">
+        <label>
+          Excel-файл
+          <input type="file" name="excelFile" accept=".xlsx,.xls" required />
+        </label>
+        <button class="primary-button" type="submit">Проверить файл</button>
+      </form>
+    </div>
+  </section>
+
+<% } else { %>
+
+  <section class="card" style="margin-bottom:20px;">
+    <div class="stats-grid">
+      <div class="stat-box">
+        <strong><%= freePreview.originalFileName %></strong>
+        <span>Файл</span>
+      </div>
+      <div class="stat-box">
+        <strong><%= freePreview.totalRows %></strong>
+        <span>Строк</span>
+      </div>
+      <div class="stat-box">
+        <strong><%= freePreview.columns.length %></strong>
+        <span>Колонок</span>
+      </div>
+    </div>
+  </section>
+
+  <form method="post" action="/free-import">
+    <section class="card" style="margin-bottom:20px;">
+      <h2>Имя таблицы</h2>
+      <p class="muted" style="margin-bottom:12px;">По умолчанию — имя файла. Можно изменить.</p>
+      <input
+        type="text"
+        name="tableName"
+        value="<%= freePreview.tableName %>"
+        required
+        style="max-width:400px;"
+      />
+    </section>
+
+    <section class="card" style="margin-bottom:20px;">
+      <h2>Схема и примеры данных</h2>
+      <p class="muted" style="margin-bottom:16px;">
+        Проверьте определённые типы. Первые <%= freePreview.sampleRows.length %> строк показаны как пример.
+      </p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th style="min-width:160px;">Колонка (Excel)</th>
+              <th style="min-width:160px;">Имя в БД</th>
+              <th style="min-width:170px;">Тип данных</th>
+              <% freePreview.sampleRows.forEach((_, si) => { %>
+                <th>Пример <%= si + 1 %></th>
+              <% }) %>
+            </tr>
+          </thead>
+          <tbody>
+            <% freePreview.columns.forEach((col, i) => { %>
+              <tr>
+                <td><strong><%= col.originalName %></strong></td>
+                <td>
+                  <input
+                    type="text"
+                    name="col_<%= i %>_name"
+                    value="<%= col.safeName %>"
+                    class="col-name-input"
+                  />
+                </td>
+                <td>
+                  <select name="col_<%= i %>_type" class="type-select">
+                    <% ["INT","FLOAT","DATE","NVARCHAR(255)","NVARCHAR(MAX)","BIT"].forEach(t => { %>
+                      <option value="<%= t %>" <%= col.inferredType === t ? "selected" : "" %>><%= t %></option>
+                    <% }) %>
+                  </select>
+                </td>
+                <% freePreview.sampleRows.forEach(row => { %>
+                  <td class="muted" style="font-size:0.9em;">
+                    <%= row[col.originalName] !== null && row[col.originalName] !== undefined ? String(row[col.originalName]).slice(0, 40) : "—" %>
+                  </td>
+                <% }) %>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <div style="display:flex; gap:12px; align-items:center;">
+      <button class="primary-button" type="submit">Импортировать в базу</button>
+      <a href="/free-upload?reset=1" style="color:var(--muted);">Отмена — загрузить другой файл</a>
+    </div>
+  </form>
+
+<% } %>
+
+<%- include("partials/footer") %>

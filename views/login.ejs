@@ -1,0 +1,26 @@
+<%- include("partials/header", { title: "Вход", heading: "Вход в систему" }) %>
+<section class="auth-card">
+  <div class="card">
+    <h2>Доступ только для сотрудников отдела обучения</h2>
+    <p class="muted">
+      Авторизуйтесь, чтобы загружать Excel-файлы, проверять данные и запускать импорт в MSSQL.
+    </p>
+
+    <% if (error) { %>
+      <div class="alert alert-error"><%= error %></div>
+    <% } %>
+
+    <form method="post" action="/login" class="form-stack">
+      <label>
+        Логин
+        <input type="text" name="username" required />
+      </label>
+      <label>
+        Пароль
+        <input type="password" name="password" required />
+      </label>
+      <button class="primary-button" type="submit">Войти</button>
+    </form>
+  </div>
+</section>
+<%- include("partials/footer") %>

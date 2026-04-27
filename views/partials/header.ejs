@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="ru">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title><%= title %></title>
+    <link rel="stylesheet" href="/public/styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="topbar">
+        <div>
+          <p class="eyebrow">Internal Training Portal</p>
+          <h1><%= heading %></h1>
+        </div>
+        <% if (user) { %>
+          <div class="topbar-actions">
+            <span class="user-chip"><%= user.displayName %></span>
+            <a class="nav-link" href="/">Главная</a>
+            <a class="nav-link" href="/upload">Обучение</a>
+            <a class="nav-link" href="/free-upload">Загрузка</a>
+            <a class="nav-link" href="/history">Журнал</a>
+            <form action="/logout" method="post">
+              <button class="ghost-button" type="submit">Выйти</button>
+            </form>
+          </div>
+        <% } %>
+      </header>
+      <main>
