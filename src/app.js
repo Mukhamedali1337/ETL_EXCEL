@@ -201,7 +201,7 @@ app.post("/upload", requireAuth, upload.single("excelFile"), async (req, res) =>
     req.session.preview = {
       templateType: selectedTemplate.id,
       templateName: selectedTemplate.name,
-      originalFileName: req.file.originalname,
+      originalFileName: Buffer.from(req.file.originalname, "latin1").toString("utf8"),
       fileHash: workbook.fileHash,
       totalRows: workbook.rows.length,
       validRows,
@@ -359,7 +359,8 @@ app.post("/free-upload", requireAuth, upload.single("excelFile"), async (req, re
       return res.render("free-upload", { error: "Выберите Excel-файл для загрузки", success: null });
     }
     filePath = req.file.path;
-    req.session.freePreview = parseExcelFree(filePath, req.file.originalname);
+    const originalname = Buffer.from(req.file.originalname, "latin1").toString("utf8");
+    req.session.freePreview = parseExcelFree(filePath, originalname);
     return res.redirect("/free-upload");
   } catch (err) {
     return res.render("free-upload", { error: err.message, success: null });
