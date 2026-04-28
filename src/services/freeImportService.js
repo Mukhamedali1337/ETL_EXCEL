@@ -6,6 +6,19 @@ const { getPool, sql } = require("../db");
 
 const ALLOWED_TYPES = ["INT", "FLOAT", "DATE", "NVARCHAR(255)", "NVARCHAR(MAX)", "BIT"];
 
+const CYRILLIC_MAP = {
+  а:"a",б:"b",в:"v",г:"g",д:"d",е:"e",ё:"yo",ж:"zh",з:"z",и:"i",й:"y",
+  к:"k",л:"l",м:"m",н:"n",о:"o",п:"p",р:"r",с:"s",т:"t",у:"u",ф:"f",
+  х:"kh",ц:"ts",ч:"ch",ш:"sh",щ:"shch",ъ:"",ы:"y",ь:"",э:"e",ю:"yu",я:"ya",
+  А:"A",Б:"B",В:"V",Г:"G",Д:"D",Е:"E",Ё:"Yo",Ж:"Zh",З:"Z",И:"I",Й:"Y",
+  К:"K",Л:"L",М:"M",Н:"N",О:"O",П:"P",Р:"R",С:"S",Т:"T",У:"U",Ф:"F",
+  Х:"Kh",Ц:"Ts",Ч:"Ch",Ш:"Sh",Щ:"Shch",Ъ:"",Ы:"Y",Ь:"",Э:"E",Ю:"Yu",Я:"Ya"
+};
+
+function transliterate(str) {
+  return str.split("").map((ch) => CYRILLIC_MAP[ch] !== undefined ? CYRILLIC_MAP[ch] : ch).join("");
+}
+
 function hashFile(filePath) {
   return crypto.createHash("sha256").update(fs.readFileSync(filePath)).digest("hex");
 }
@@ -16,7 +29,8 @@ function sanitizeIdentifier(raw) {
 }
 
 function tableNameFromFile(filename) {
-  return path.basename(filename, path.extname(filename)).trim().replace(/[\[\]\x00]/g, "_").slice(0, 128) || "import";
+  const base = path.basename(filename, path.extname(filename)).trim();
+  return transliterate(base).replace(/[\[\]\x00]/g, "_").replace(/\s+/g, "_").slice(0, 128) || "import";
 }
 
 function validateType(type) {
