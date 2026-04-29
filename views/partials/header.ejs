@@ -17,7 +17,7 @@
           <div class="topbar-actions">
             <span class="user-chip"><%= user.displayName %></span>
             <a class="nav-link" href="/">Главная</a>
-            <a class="nav-link" href="/upload">Обучение</a>
+            <% if (user && user.isTrainer) { %><a class="nav-link" href="/upload">Обучение</a><% } %>
             <a class="nav-link" href="/free-upload">Загрузка</a>
             <a class="nav-link" href="/history">Журнал</a>
             <form action="/logout" method="post">

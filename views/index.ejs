@@ -1,12 +1,21 @@
 <%- include("partials/header", { title: "Главная", heading: "Портал загрузки данных" }) %>
 
 <div class="home-grid">
+  <% if (user && user.isTrainer) { %>
   <a class="home-card" href="/upload">
     <div class="home-card-icon">📋</div>
     <h2>Отдел обучения</h2>
     <p class="muted">Загрузка стандартных шаблонов: журналы, реестры, планы обучения сотрудников.</p>
     <span class="home-card-link">Перейти →</span>
   </a>
+  <% } else { %>
+  <div class="home-card home-card-disabled">
+    <div class="home-card-icon">📋</div>
+    <h2>Отдел обучения</h2>
+    <p class="muted">Доступно только для сотрудников группы «Тренера».</p>
+    <span class="home-card-link muted">Нет доступа</span>
+  </div>
+  <% } %>
 
   <a class="home-card home-card-accent" href="/free-upload">
     <div class="home-card-icon">📤</div>

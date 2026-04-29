@@ -19,7 +19,7 @@ async function verifyUser(username, password) {
     const { searchEntries } = await serviceClient.search(config.ldap.baseDn, {
       scope: "sub",
       filter: `(sAMAccountName=${escapeLdapFilter(username)})`,
-      attributes: ["distinguishedName", "displayName", "sAMAccountName"],
+      attributes: ["distinguishedName", "displayName", "sAMAccountName", "memberOf"],
       sizeLimit: 1
     });
 
@@ -38,9 +38,13 @@ async function verifyUser(username, password) {
       return null;
     }
 
+    const groups = [].concat(entry.memberOf || []).map(String);
+    const isTrainer = groups.some((dn) => /^CN=Тренера,/i.test(dn));
+
     return {
       username: String(entry.sAMAccountName),
-      displayName: String(entry.displayName || entry.sAMAccountName)
+      displayName: String(entry.displayName || entry.sAMAccountName),
+      isTrainer
     };
   } catch {
     await serviceClient.unbind().catch(() => {});

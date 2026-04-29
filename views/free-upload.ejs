@@ -95,9 +95,27 @@
 
     <section class="card" style="margin-bottom:20px;">
       <h2>Схема и примеры данных</h2>
-      <p class="muted" style="margin-bottom:16px;">
+      <p class="muted" style="margin-bottom:12px;">
         Проверьте определённые типы. Первые <%= freePreview.sampleRows.length %> строк показаны как пример.
       </p>
+      <details style="margin-bottom:16px;">
+        <summary style="font-weight:600; color:var(--primary); cursor:pointer;">Справка по типам данных</summary>
+        <div class="table-wrap" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr><th>Тип</th><th>Когда использовать</th><th>Пример</th></tr>
+            </thead>
+            <tbody>
+              <tr><td><strong>INT</strong></td><td>Целые числа без дроби</td><td>42, 1000, -5</td></tr>
+              <tr><td><strong>FLOAT</strong></td><td>Числа с дробной частью</td><td>3.14, 99.9, -0.5</td></tr>
+              <tr><td><strong>DATE</strong></td><td>Даты (без времени)</td><td>2024-01-15</td></tr>
+              <tr><td><strong>NVARCHAR(255)</strong></td><td>Короткий текст до 255 символов</td><td>ФИО, код, название</td></tr>
+              <tr><td><strong>NVARCHAR(MAX)</strong></td><td>Длинный текст без ограничений</td><td>Описание, комментарий</td></tr>
+              <tr><td><strong>BIT</strong></td><td>Логическое значение Да/Нет</td><td>1 / 0</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </details>
       <div class="table-wrap">
         <table>
           <thead>

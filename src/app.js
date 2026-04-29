@@ -5,7 +5,7 @@ const session = require("express-session");
 const MemoryStoreFactory = require("memorystore");
 const multer = require("multer");
 const config = require("./config");
-const { requireAuth } = require("./middleware/auth");
+const { requireAuth, requireTrainer } = require("./middleware/auth");
 const { verifyUser } = require("./services/authService");
 const { parseWorkbook } = require("./services/excelService");
 const {
@@ -112,7 +112,7 @@ app.post("/logout", requireAuth, (req, res) => {
   });
 });
 
-app.get("/upload", requireAuth, (req, res) => {
+app.get("/upload", requireTrainer, (req, res) => {
   const requestedTemplateId = req.query.template || defaultTemplateId;
   const selectedTemplate =
     getTemplateById(requestedTemplateId) || getTemplateById(defaultTemplateId);
@@ -125,7 +125,7 @@ app.get("/upload", requireAuth, (req, res) => {
   });
 });
 
-app.post("/upload", requireAuth, upload.single("excelFile"), async (req, res) => {
+app.post("/upload", requireTrainer, upload.single("excelFile"), async (req, res) => {
   let filePath;
   const selectedTemplate =
     getTemplateById(req.body.templateType) || getTemplateById(defaultTemplateId);
@@ -229,7 +229,7 @@ app.post("/upload", requireAuth, upload.single("excelFile"), async (req, res) =>
   }
 });
 
-app.post("/import", requireAuth, async (req, res) => {
+app.post("/import", requireTrainer, async (req, res) => {
   const preview = req.session.preview;
 
   if (!preview) {

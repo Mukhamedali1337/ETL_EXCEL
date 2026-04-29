@@ -1,0 +1,10 @@
+<%- include("partials/header", { title: "Нет доступа", heading: "Ошибка доступа" }) %>
+
+<section class="card" style="max-width:520px; margin:40px auto; text-align:center;">
+  <div style="font-size:48px; margin-bottom:16px;">🔒</div>
+  <h2 style="margin:0 0 12px;">Нет доступа</h2>
+  <p class="muted"><%= message %></p>
+  <a class="primary-button" href="/" style="display:inline-block; margin-top:20px; text-decoration:none;">На главную</a>
+</section>
+
+<%- include("partials/footer") %>
