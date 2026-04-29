@@ -1,0 +1,58 @@
+<%- include("../partials/header", { title: "Админ — Дашборд", heading: "Администрирование" }) %>
+
+<% if (error) { %>
+  <div class="alert alert-error"><%= error %></div>
+<% } %>
+
+<div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
+  <a class="nav-link" href="/admin">Дашборд</a>
+  <a class="nav-link" href="/admin/users">Пользователи</a>
+  <a class="nav-link" href="/admin/tables">Таблицы</a>
+  <a class="nav-link" href="/admin/templates">Шаблоны</a>
+</div>
+
+<% if (stats) { %>
+<div class="stats-grid" style="margin-bottom:24px;">
+  <div class="stat-box">
+    <strong style="font-size:1.6em;"><%= stats.training_batches %></strong>
+    <span class="muted">Загрузок (Обучение)</span>
+  </div>
+  <div class="stat-box">
+    <strong style="font-size:1.6em;"><%= stats.free_batches %></strong>
+    <span class="muted">Загрузок (Свободных)</span>
+  </div>
+  <div class="stat-box">
+    <strong style="font-size:1.6em;"><%= stats.user_tables %></strong>
+    <span class="muted">Таблиц создано</span>
+  </div>
+  <div class="stat-box">
+    <strong style="font-size:1.6em;"><%= stats.total_logins %></strong>
+    <span class="muted">Всего входов</span>
+  </div>
+</div>
+<% } %>
+
+<section class="card">
+  <h2>Последние входы</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Пользователь</th><th>Имя</th><th>Дата и время</th></tr>
+      </thead>
+      <tbody>
+        <% recentLogins.forEach(l => { %>
+          <tr>
+            <td><strong><%= l.username %></strong></td>
+            <td><%= l.display_name || '—' %></td>
+            <td class="muted"><%= new Date(l.logged_at).toLocaleString("ru-RU") %></td>
+          </tr>
+        <% }) %>
+        <% if (!recentLogins.length) { %>
+          <tr><td colspan="3" class="muted">Нет данных</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("../partials/footer") %>

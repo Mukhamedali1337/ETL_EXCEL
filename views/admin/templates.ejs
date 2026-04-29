@@ -1,0 +1,52 @@
+<%- include("../partials/header", { title: "Админ — Шаблоны", heading: "Настройка шаблонов" }) %>
+
+<div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
+  <a class="nav-link" href="/admin">Дашборд</a>
+  <a class="nav-link" href="/admin/users">Пользователи</a>
+  <a class="nav-link" href="/admin/tables">Таблицы</a>
+  <a class="nav-link" href="/admin/templates">Шаблоны</a>
+</div>
+
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<% if (success) { %><div class="alert alert-success"><%= success %></div><% } %>
+
+<form method="post" action="/admin/templates">
+  <section class="card" style="margin-bottom:20px;">
+    <h2>Названия и описания шаблонов</h2>
+    <p class="muted" style="margin-bottom:16px;">
+      Здесь можно переименовать шаблоны и изменить их описание. Оставьте поле пустым — будет использоваться значение из кода.
+    </p>
+    <div class="form-stack">
+      <% importTemplates.forEach(tpl => { %>
+        <% const lbl = labels[tpl.id] || {}; %>
+        <div class="card" style="background:rgba(255,255,255,0.6); padding:16px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:10px;">
+            <strong><%= tpl.id %></strong>
+            <% if (tpl.ready) { %>
+              <span class="status-pill" style="font-size:0.8em;">активен</span>
+            <% } else { %>
+              <span style="padding:4px 10px; border-radius:999px; background:rgba(0,0,0,0.06); font-size:0.8em; color:var(--muted);">заглушка</span>
+            <% } %>
+          </div>
+          <div class="form-stack" style="gap:10px;">
+            <label style="font-weight:500;">
+              Название
+              <input type="text" name="name_<%= tpl.id %>"
+                value="<%= lbl.display_name || '' %>"
+                placeholder="<%= tpl.name %>" />
+            </label>
+            <label style="font-weight:500;">
+              Описание
+              <input type="text" name="desc_<%= tpl.id %>"
+                value="<%= lbl.description || '' %>"
+                placeholder="<%= tpl.description %>" />
+            </label>
+          </div>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+  <button class="primary-button" type="submit">Сохранить изменения</button>
+</form>
+
+<%- include("../partials/footer") %>

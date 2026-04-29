@@ -57,6 +57,40 @@ BEGIN
 END;
 GO
 
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[portal_login_log]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[portal_login_log] (
+        [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [username] NVARCHAR(100) NOT NULL,
+        [display_name] NVARCHAR(255) NULL,
+        [logged_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[portal_roles]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[portal_roles] (
+        [username] NVARCHAR(100) NOT NULL PRIMARY KEY,
+        [role] NVARCHAR(50) NOT NULL DEFAULT 'trainer',
+        [granted_by] NVARCHAR(100) NULL,
+        [granted_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+END;
+GO
+
+IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[portal_template_labels]') AND type in (N'U'))
+BEGIN
+    CREATE TABLE [dbo].[portal_template_labels] (
+        [template_id] NVARCHAR(100) NOT NULL PRIMARY KEY,
+        [display_name] NVARCHAR(255) NULL,
+        [description] NVARCHAR(1000) NULL,
+        [updated_by] NVARCHAR(100) NULL,
+        [updated_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+    );
+END;
+GO
+
 IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[import_errors]') AND type in (N'U'))
 BEGIN
     CREATE TABLE [dbo].[import_errors] (

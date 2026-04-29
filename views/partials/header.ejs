@@ -20,6 +20,7 @@
             <% if (user && user.isTrainer) { %><a class="nav-link" href="/upload">Обучение</a><% } %>
             <a class="nav-link" href="/free-upload">Загрузка</a>
             <a class="nav-link" href="/history">Журнал</a>
+            <% if (user && user.isAdmin) { %><a class="nav-link" href="/admin" style="background:var(--primary);color:white;border-color:transparent;">Админ</a><% } %>
             <form action="/logout" method="post">
               <button class="ghost-button" type="submit">Выйти</button>
             </form>

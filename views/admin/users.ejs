@@ -1,0 +1,84 @@
+<%- include("../partials/header", { title: "Админ — Пользователи", heading: "Управление пользователями" }) %>
+
+<div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap;">
+  <a class="nav-link" href="/admin">Дашборд</a>
+  <a class="nav-link" href="/admin/users">Пользователи</a>
+  <a class="nav-link" href="/admin/tables">Таблицы</a>
+  <a class="nav-link" href="/admin/templates">Шаблоны</a>
+</div>
+
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+<% if (success) { %><div class="alert alert-success"><%= success %></div><% } %>
+
+<div class="hero-grid">
+  <section class="card">
+    <h2>Выдать роль тренера</h2>
+    <p class="muted" style="margin-bottom:12px;">
+      Пользователь получит доступ к разделу «Обучение», даже если не состоит в группе AD «Тренера».
+    </p>
+    <form method="post" action="/admin/users/grant" class="form-stack">
+      <label>
+        Логин (sAMAccountName)
+        <input type="text" name="username" placeholder="ivanov" required />
+      </label>
+      <button class="primary-button" type="submit">Выдать роль</button>
+    </form>
+  </section>
+
+  <section class="card">
+    <h2>Текущие роли (ручные)</h2>
+    <p class="muted" style="margin-bottom:12px;">Роли, выданные вручную (в дополнение к AD-группам).</p>
+    <% if (!roles.length) { %>
+      <p class="muted">Нет ручных назначений.</p>
+    <% } else { %>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Логин</th><th>Роль</th><th>Выдал</th><th>Дата</th><th></th></tr>
+          </thead>
+          <tbody>
+            <% roles.forEach(r => { %>
+              <tr>
+                <td><strong><%= r.username %></strong></td>
+                <td><span class="status-pill"><%= r.role %></span></td>
+                <td class="muted"><%= r.granted_by || '—' %></td>
+                <td class="muted"><%= new Date(r.granted_at).toLocaleDateString("ru-RU") %></td>
+                <td>
+                  <form method="post" action="/admin/users/revoke" style="display:inline;">
+                    <input type="hidden" name="username" value="<%= r.username %>" />
+                    <button type="submit" style="background:none;border:none;color:var(--muted);cursor:pointer;font:inherit;" onclick="return confirm('Отозвать роль у <%= r.username %>?')">Отозвать</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    <% } %>
+  </section>
+</div>
+
+<section class="card" style="margin-top:20px;">
+  <h2>История входов (последние 50)</h2>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Логин</th><th>Имя</th><th>Дата и время</th></tr>
+      </thead>
+      <tbody>
+        <% loginLog.forEach(l => { %>
+          <tr>
+            <td><strong><%= l.username %></strong></td>
+            <td><%= l.display_name || '—' %></td>
+            <td class="muted"><%= new Date(l.logged_at).toLocaleString("ru-RU") %></td>
+          </tr>
+        <% }) %>
+        <% if (!loginLog.length) { %>
+          <tr><td colspan="3" class="muted">Нет данных</td></tr>
+        <% } %>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<%- include("../partials/footer") %>

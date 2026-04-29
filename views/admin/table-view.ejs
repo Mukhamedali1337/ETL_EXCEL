@@ -1,0 +1,47 @@
+<%- include("../partials/header", { title: "Таблица: " + tableName, heading: tableName }) %>
+
+<div style="display:flex; gap:12px; margin-bottom:24px; flex-wrap:wrap; align-items:center;">
+  <a class="nav-link" href="/admin/tables">← Все таблицы</a>
+  <span class="muted" style="font-size:0.9em;">Строк: <%= total.toLocaleString("ru-RU") %> · Страница <%= page %> из <%= totalPages %></span>
+</div>
+
+<% if (error) { %><div class="alert alert-error"><%= error %></div><% } %>
+
+<section class="card">
+  <% if (!rows.length) { %>
+    <p class="muted">Таблица пустая.</p>
+  <% } else { %>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <% columns.forEach(col => { %><th><%= col %></th><% }) %>
+          </tr>
+        </thead>
+        <tbody>
+          <% rows.forEach(row => { %>
+            <tr>
+              <% columns.forEach(col => { %>
+                <td class="muted" style="font-size:0.9em; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                  <%= row[col] !== null && row[col] !== undefined ? String(row[col]).slice(0, 80) : '—' %>
+                </td>
+              <% }) %>
+            </tr>
+          <% }) %>
+        </tbody>
+      </table>
+    </div>
+
+    <div style="display:flex; gap:8px; margin-top:16px; align-items:center; flex-wrap:wrap;">
+      <% if (page > 1) { %>
+        <a class="nav-link" href="/admin/tables/<%= encodeURIComponent(tableName) %>?page=<%= page - 1 %>" style="padding:6px 14px;">← Назад</a>
+      <% } %>
+      <span class="muted"><%= page %> / <%= totalPages %></span>
+      <% if (page < totalPages) { %>
+        <a class="nav-link" href="/admin/tables/<%= encodeURIComponent(tableName) %>?page=<%= page + 1 %>" style="padding:6px 14px;">Вперёд →</a>
+      <% } %>
+    </div>
+  <% } %>
+</section>
+
+<%- include("../partials/footer") %>

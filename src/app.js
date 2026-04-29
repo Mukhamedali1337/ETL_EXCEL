@@ -7,6 +7,8 @@ const multer = require("multer");
 const config = require("./config");
 const { requireAuth, requireTrainer } = require("./middleware/auth");
 const { verifyUser } = require("./services/authService");
+const { logLogin, getUserRole } = require("./services/adminService");
+const adminRouter = require("./routes/admin");
 const { parseWorkbook } = require("./services/excelService");
 const {
   importTemplates,
@@ -102,7 +104,12 @@ app.post("/login", async (req, res) => {
     });
   }
 
-  req.session.user = user;
+  const portalRole = await getUserRole(user.username).catch(() => null);
+  const isAdmin = config.adminUsers.includes(user.username.toLowerCase());
+  const isTrainer = user.isTrainer || portalRole === "trainer" || isAdmin;
+
+  req.session.user = { ...user, isTrainer, isAdmin };
+  logLogin(user.username, user.displayName);
   return res.redirect("/");
 });
 
@@ -420,6 +427,8 @@ app.post("/free-import", requireAuth, async (req, res) => {
 app.get("/export", requireAuth, (req, res) => {
   res.render("export");
 });
+
+app.use("/admin", adminRouter);
 
 app.use((error, req, res, next) => {
   if (error instanceof multer.MulterError) {

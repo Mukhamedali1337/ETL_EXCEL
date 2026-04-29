@@ -22,6 +22,7 @@ module.exports = {
   port: Number(process.env.PORT || 3000),
   sessionSecret: process.env.SESSION_SECRET || "change-me-in-env",
   uploadDir: path.join(process.cwd(), "uploads"),
+  adminUsers: (process.env.ADMIN_USERS || "").split(",").map((s) => s.trim().toLowerCase()).filter(Boolean),
   ldap: {
     url: process.env.LDAP_URL || "ldap://10.10.1.251:389",
     baseDn: process.env.LDAP_BASE_DN || "DC=evrika,DC=com",
