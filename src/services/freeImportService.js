@@ -44,7 +44,7 @@ function inferType(values) {
   if (nonEmpty.every((v) => typeof v === "number")) {
     return nonEmpty.every((v) => Number.isInteger(v)) ? "INT" : "FLOAT";
   }
-  const maxLen = Math.max(...nonEmpty.map((v) => String(v).length));
+  const maxLen = nonEmpty.reduce((max, v) => Math.max(max, String(v).length), 0);
   return maxLen > 300 ? "NVARCHAR(MAX)" : "NVARCHAR(255)";
 }
 
