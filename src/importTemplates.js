@@ -1,21 +1,4 @@
-const { REQUIRED_HEADERS } = require("./services/excelService");
-
 const importTemplates = [
-  {
-    id: "training_records",
-    name: "Обучение сотрудников",
-    description: "Текущий рабочий шаблон для загрузки результатов обучения.",
-    ready: true,
-    tableName: null,
-    columns: null,
-    requiredHeaders: REQUIRED_HEADERS,
-    rules: [
-      "Обязательные поля и типы проверяются автоматически",
-      "Проверка дублей в файле и в БД",
-      "Импорт в таблицу dbo.training_records"
-    ]
-  },
-
   {
     id: "welcome_attendance",
     name: "Welcome (Адаптация)",
