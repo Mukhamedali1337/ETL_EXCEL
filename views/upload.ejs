@@ -3,9 +3,7 @@
 <section class="hero-grid">
   <div class="card">
     <h2>Выбор типа импорта</h2>
-    <p class="muted">
-      Подготовили 6 типов загрузки. Сейчас полностью настроен первый шаблон, остальные доступны как каркас для дальнейшего заполнения столбцов и правил.
-    </p>
+    <p class="muted">Выберите нужный шаблон из списка ниже.</p>
     <div class="template-selector">
       <% templates.forEach((template) => { %>
         <a
@@ -23,7 +21,7 @@
     <h2><%= selectedTemplate ? selectedTemplate.name : "Тип импорта" %></h2>
     <p class="muted"><%= selectedTemplate ? selectedTemplate.description : "" %></p>
 
-    <h3>Ожидаемые колонки</h3>
+    <h3>Ожидаемые столбцы</h3>
     <div class="template-grid">
       <% if (selectedTemplate && selectedTemplate.requiredHeaders && selectedTemplate.requiredHeaders.length > 0) { %>
         <% selectedTemplate.requiredHeaders.forEach((header) => { %>
@@ -58,7 +56,7 @@
 
   <% if (selectedTemplate && !selectedTemplate.ready) { %>
     <div class="alert">
-      Для <strong><%= selectedTemplate.name %></strong> загрузка временно выключена: дождемся список столбцов и условий.
+      Для <strong><%= selectedTemplate.name %></strong> загрузка временно выключена.
     </div>
   <% } %>
 
@@ -80,103 +78,178 @@
 </section>
 
 <% if (preview) { %>
-  <section class="preview-grid">
-    <div class="card">
-      <h2>Предпросмотр импорта</h2>
-      <div class="stats-grid">
-        <div class="stat-box">
-          <strong><%= preview.originalFileName %></strong>
-          <span>Файл</span>
+
+  <% if (preview.isNewTemplate) { %>
+    <%# ── Новый шаблон ── %>
+    <section class="preview-grid">
+      <div class="card">
+        <h2>Предпросмотр импорта</h2>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <strong><%= preview.originalFileName %></strong>
+            <span>Файл</span>
+          </div>
+          <div class="stat-box">
+            <strong><%= preview.templateName %></strong>
+            <span>Шаблон</span>
+          </div>
+          <div class="stat-box">
+            <strong><%= preview.totalRows %></strong>
+            <span>Строк в файле</span>
+          </div>
+          <div class="stat-box">
+            <strong><%= preview.validRows.length %></strong>
+            <span>Готово к загрузке</span>
+          </div>
+          <div class="stat-box">
+            <strong><%= preview.errors.length %></strong>
+            <span>Пропущено (дубли)</span>
+          </div>
         </div>
-        <div class="stat-box">
-          <strong><%= preview.templateName || "Не указан" %></strong>
-          <span>Тип импорта</span>
-        </div>
-        <div class="stat-box">
-          <strong><%= preview.totalRows %></strong>
-          <span>Всего строк</span>
-        </div>
-        <div class="stat-box">
-          <strong><%= preview.validRows.length %></strong>
-          <span>Валидных строк</span>
-        </div>
-        <div class="stat-box">
-          <strong><%= preview.errors.length %></strong>
-          <span>Ошибок</span>
-        </div>
+        <form method="post" action="/import" style="margin-top:16px;">
+          <button class="primary-button" type="submit" <%= preview.validRows.length === 0 ? "disabled" : "" %>>
+            Подтвердить импорт
+          </button>
+        </form>
       </div>
 
-      <form method="post" action="/import">
-        <button class="primary-button" type="submit" <%= preview.validRows.length === 0 ? "disabled" : "" %>>
-          Подтвердить импорт
-        </button>
-      </form>
-    </div>
+      <div class="card">
+        <h2>Пример данных (первые <%= preview.sampleRows.length %> строк)</h2>
+        <% if (preview.sampleRows.length === 0) { %>
+          <p class="muted">Нет строк для отображения.</p>
+        <% } else { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <% preview.columns.forEach(col => { %><th><%= col.excelHeader %></th><% }) %>
+                </tr>
+              </thead>
+              <tbody>
+                <% preview.sampleRows.forEach(row => { %>
+                  <tr>
+                    <% preview.columns.forEach(col => { %>
+                      <td class="muted" style="font-size:0.9em; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
+                        <%= row[col.sqlName] !== null && row[col.sqlName] !== undefined ? String(row[col.sqlName]).slice(0, 40) : "—" %>
+                      </td>
+                    <% }) %>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    </section>
 
-    <div class="card">
-      <h2>Валидные строки</h2>
-      <% if (preview.validRows.length === 0) { %>
-        <p class="muted">Нет строк, готовых к импорту.</p>
+    <% if (preview.errors.length > 0) { %>
+      <section class="card">
+        <h2>Пропущенные строки (<%= preview.errors.length %>)</h2>
+        <div class="table-wrap">
+          <table>
+            <thead><tr><th>Строка</th><th>Причина</th></tr></thead>
+            <tbody>
+              <% preview.errors.forEach(e => { %>
+                <tr>
+                  <td><%= e.rowNumber %></td>
+                  <td class="muted"><%= e.message %></td>
+                </tr>
+              <% }) %>
+            </tbody>
+          </table>
+        </div>
+      </section>
+    <% } %>
+
+  <% } else { %>
+    <%# ── Старый шаблон training_records ── %>
+    <section class="preview-grid">
+      <div class="card">
+        <h2>Предпросмотр импорта</h2>
+        <div class="stats-grid">
+          <div class="stat-box">
+            <strong><%= preview.originalFileName %></strong>
+            <span>Файл</span>
+          </div>
+          <div class="stat-box">
+            <strong><%= preview.templateName || "Не указан" %></strong>
+            <span>Тип импорта</span>
+          </div>
+          <div class="stat-box">
+            <strong><%= preview.totalRows %></strong>
+            <span>Всего строк</span>
+          </div>
+          <div class="stat-box">
+            <strong><%= preview.validRows.length %></strong>
+            <span>Валидных строк</span>
+          </div>
+          <div class="stat-box">
+            <strong><%= preview.errors.length %></strong>
+            <span>Ошибок</span>
+          </div>
+        </div>
+        <form method="post" action="/import">
+          <button class="primary-button" type="submit" <%= preview.validRows.length === 0 ? "disabled" : "" %>>
+            Подтвердить импорт
+          </button>
+        </form>
+      </div>
+
+      <div class="card">
+        <h2>Валидные строки</h2>
+        <% if (preview.validRows.length === 0) { %>
+          <p class="muted">Нет строк, готовых к импорту.</p>
+        <% } else { %>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>employee_id</th><th>full_name</th><th>email</th>
+                  <th>course_code</th><th>course_name</th><th>completion_date</th><th>score</th>
+                </tr>
+              </thead>
+              <tbody>
+                <% preview.validRows.slice(0, 20).forEach((row) => { %>
+                  <tr>
+                    <td><%= row.employee_id %></td>
+                    <td><%= row.full_name %></td>
+                    <td><%= row.email %></td>
+                    <td><%= row.course_code %></td>
+                    <td><%= row.course_name %></td>
+                    <td><%= row.completion_date %></td>
+                    <td><%= row.score %></td>
+                  </tr>
+                <% }) %>
+              </tbody>
+            </table>
+          </div>
+        <% } %>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Ошибки проверки</h2>
+      <% if (preview.errors.length === 0) { %>
+        <div class="alert alert-success">Ошибок не найдено.</div>
       <% } else { %>
         <div class="table-wrap">
           <table>
-            <thead>
-              <tr>
-                <th>employee_id</th>
-                <th>full_name</th>
-                <th>email</th>
-                <th>course_code</th>
-                <th>course_name</th>
-                <th>completion_date</th>
-                <th>score</th>
-              </tr>
-            </thead>
+            <thead><tr><th>Строка</th><th>Поле</th><th>Ошибка</th></tr></thead>
             <tbody>
-              <% preview.validRows.slice(0, 20).forEach((row) => { %>
+              <% preview.errors.forEach((errorItem) => { %>
                 <tr>
-                  <td><%= row.employee_id %></td>
-                  <td><%= row.full_name %></td>
-                  <td><%= row.email %></td>
-                  <td><%= row.course_code %></td>
-                  <td><%= row.course_name %></td>
-                  <td><%= row.completion_date %></td>
-                  <td><%= row.score %></td>
+                  <td><%= errorItem.rowNumber %></td>
+                  <td><%= errorItem.field %></td>
+                  <td><%= errorItem.message %></td>
                 </tr>
               <% }) %>
             </tbody>
           </table>
         </div>
       <% } %>
-    </div>
-  </section>
+    </section>
+  <% } %>
 
-  <section class="card">
-    <h2>Ошибки проверки</h2>
-    <% if (preview.errors.length === 0) { %>
-      <div class="alert alert-success">Ошибок не найдено.</div>
-    <% } else { %>
-      <div class="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Строка</th>
-              <th>Поле</th>
-              <th>Ошибка</th>
-            </tr>
-          </thead>
-          <tbody>
-            <% preview.errors.forEach((errorItem) => { %>
-              <tr>
-                <td><%= errorItem.rowNumber %></td>
-                <td><%= errorItem.field %></td>
-                <td><%= errorItem.message %></td>
-              </tr>
-            <% }) %>
-          </tbody>
-        </table>
-      </div>
-    <% } %>
-  </section>
 <% } %>
 
 <%- include("partials/footer") %>

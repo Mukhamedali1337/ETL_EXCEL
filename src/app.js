@@ -10,6 +10,7 @@ const { verifyUser } = require("./services/authService");
 const { logLogin, getUserRole } = require("./services/adminService");
 const adminRouter = require("./routes/admin");
 const { parseWorkbook } = require("./services/excelService");
+const { parseTemplateExcel, insertTemplateRows } = require("./services/templateImportService");
 const {
   importTemplates,
   getTemplateById,
@@ -167,54 +168,67 @@ app.post("/upload", requireTrainer, upload.single("excelFile"), async (req, res)
     }
 
     filePath = req.file.path;
-    const workbook = parseWorkbook(filePath);
-    const duplicateBatch = await checkDuplicateFile(workbook.fileHash);
+    const originalFileName = Buffer.from(req.file.originalname, "latin1").toString("utf8");
 
-    if (duplicateBatch) {
-      return res.status(409).render("upload", {
-        error: `Этот файл уже был загружен ранее. Batch ID: ${duplicateBatch.id}`,
-        success: null,
-        selectedTemplate,
-        templates: importTemplates
-      });
-    }
+    if (selectedTemplate.columns) {
+      // ── New template-based flow ──────────────────────────────────────────
+      const parsed = parseTemplateExcel(filePath, selectedTemplate);
+      const duplicateBatch = await checkDuplicateFile(parsed.fileHash);
 
-    const cleanCandidates = workbook.rows.filter((row) => row.errors.length === 0);
-    const existingKeys = await checkExistingRows(
-      cleanCandidates.map((row) => row.data)
-    );
-
-    workbook.rows.forEach((row) => {
-      const key = [
-        row.data.employee_id,
-        row.data.course_code,
-        row.data.completion_date
-      ].join("|");
-
-      if (existingKeys.has(key)) {
-        row.errors.push({
-          rowNumber: row.rowNumber,
-          field: "duplicate",
-          message: "Запись уже существует в базе"
+      if (duplicateBatch) {
+        return res.status(409).render("upload", {
+          error: `Этот файл уже был загружен ранее. Batch ID: ${duplicateBatch.id}`,
+          success: null, selectedTemplate, templates: importTemplates
         });
       }
-    });
 
-    const allErrors = workbook.rows.flatMap((row) => row.errors);
-    const validRows = workbook.rows
-      .filter((row) => row.errors.length === 0)
-      .map((row) => row.data);
+      req.session.preview = {
+        isNewTemplate: true,
+        templateType: selectedTemplate.id,
+        templateName: selectedTemplate.name,
+        originalFileName,
+        fileHash: parsed.fileHash,
+        totalRows: parsed.totalRows,
+        columns: parsed.columns,
+        validRows: parsed.validRows,
+        errors: parsed.errors,
+        sampleRows: parsed.sampleRows,
+        uploadedAt: new Date().toISOString()
+      };
+    } else {
+      // ── Legacy training_records flow ─────────────────────────────────────
+      const workbook = parseWorkbook(filePath);
+      const duplicateBatch = await checkDuplicateFile(workbook.fileHash);
 
-    req.session.preview = {
-      templateType: selectedTemplate.id,
-      templateName: selectedTemplate.name,
-      originalFileName: Buffer.from(req.file.originalname, "latin1").toString("utf8"),
-      fileHash: workbook.fileHash,
-      totalRows: workbook.rows.length,
-      validRows,
-      errors: allErrors,
-      uploadedAt: new Date().toISOString()
-    };
+      if (duplicateBatch) {
+        return res.status(409).render("upload", {
+          error: `Этот файл уже был загружен ранее. Batch ID: ${duplicateBatch.id}`,
+          success: null, selectedTemplate, templates: importTemplates
+        });
+      }
+
+      const cleanCandidates = workbook.rows.filter((row) => row.errors.length === 0);
+      const existingKeys = await checkExistingRows(cleanCandidates.map((row) => row.data));
+
+      workbook.rows.forEach((row) => {
+        const key = [row.data.employee_id, row.data.course_code, row.data.completion_date].join("|");
+        if (existingKeys.has(key)) {
+          row.errors.push({ rowNumber: row.rowNumber, field: "duplicate", message: "Запись уже существует в базе" });
+        }
+      });
+
+      req.session.preview = {
+        isNewTemplate: false,
+        templateType: selectedTemplate.id,
+        templateName: selectedTemplate.name,
+        originalFileName,
+        fileHash: workbook.fileHash,
+        totalRows: workbook.rows.length,
+        validRows: workbook.rows.filter((r) => r.errors.length === 0).map((r) => r.data),
+        errors: workbook.rows.flatMap((r) => r.errors),
+        uploadedAt: new Date().toISOString()
+      };
+    }
 
     return res.render("upload", {
       error: null,
@@ -308,12 +322,23 @@ app.post("/import", requireTrainer, async (req, res) => {
       });
     }
 
-    const insertedRows = await importRows(batchId, preview.validRows);
+    let insertedRows;
+    let skippedRows = [];
+
+    if (preview.isNewTemplate) {
+      const result = await insertTemplateRows(previewTemplate, preview.validRows, req.session.user.username);
+      insertedRows = result.inserted;
+      skippedRows = result.skippedRows;
+    } else {
+      insertedRows = await importRows(batchId, preview.validRows);
+    }
+
     req.session.preview = null;
 
+    const skipMsg = skippedRows.length > 0 ? `, пропущено дублей: ${skippedRows.length}` : "";
     return res.render("upload", {
       error: null,
-      success: `Импорт завершен успешно. Batch ID: ${batchId}, записей: ${insertedRows}`,
+      success: `Импорт завершен успешно. Batch ID: ${batchId}, записей: ${insertedRows}${skipMsg}`,
       selectedTemplate: previewTemplate,
       templates: importTemplates
     });
