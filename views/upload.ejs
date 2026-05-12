@@ -23,7 +23,11 @@
 
     <h3>Ожидаемые столбцы</h3>
     <div class="template-grid">
-      <% if (selectedTemplate && selectedTemplate.requiredHeaders && selectedTemplate.requiredHeaders.length > 0) { %>
+      <% if (selectedTemplate && selectedTemplate.columns && selectedTemplate.columns.length > 0) { %>
+        <% selectedTemplate.columns.forEach((col) => { %>
+          <span><%= col.excelHeader %></span>
+        <% }) %>
+      <% } else if (selectedTemplate && selectedTemplate.requiredHeaders && selectedTemplate.requiredHeaders.length > 0) { %>
         <% selectedTemplate.requiredHeaders.forEach((header) => { %>
           <span><%= header %></span>
         <% }) %>
