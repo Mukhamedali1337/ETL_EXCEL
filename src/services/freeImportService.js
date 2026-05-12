@@ -91,25 +91,41 @@ function parseExcelFree(filePath, originalFileName) {
   const rawRows = xlsx.utils.sheet_to_json(sheet, { defval: null });
   if (rawRows.length === 0) throw new Error("Excel-файл пустой");
 
-  const originalHeaders = Object.keys(rawRows[0]).map((h) => String(h).trim());
+  const allHeaders = Object.keys(rawRows[0]).map((h) => String(h).trim());
 
-  // Build columns with deduplicated safeNames
+  // Drop headers that are blank or look like xlsx auto-generated names (__EMPTY*)
+  const originalHeaders = allHeaders.filter((h) => h && !/^__EMPTY/.test(h));
+
+  // Build columns — skip columns where every value is empty
   const usedNames = new Set();
-  const columns = originalHeaders.map((header, i) => {
-    let safeName = sanitizeIdentifier(header) || `col_${i}`;
-    if (usedNames.has(safeName.toLowerCase())) safeName = `${safeName}_${i}`;
-    usedNames.add(safeName.toLowerCase());
-
+  const columns = originalHeaders.reduce((acc, header, i) => {
     const values = rawRows.map((row) => {
       const key = Object.keys(row).find((k) => String(k).trim() === header);
       return key !== undefined ? row[key] : null;
     });
 
-    return { originalName: header, safeName, inferredType: inferType(values) };
-  });
+    const hasData = values.some((v) => v !== null && v !== undefined && v !== "");
+    if (!hasData) return acc;
+
+    let safeName = sanitizeIdentifier(header) || `col_${i}`;
+    if (usedNames.has(safeName.toLowerCase())) safeName = `${safeName}_${i}`;
+    usedNames.add(safeName.toLowerCase());
+
+    acc.push({ originalName: header, safeName, inferredType: inferType(values) });
+    return acc;
+  }, []);
+
+  // Drop rows where every value is empty
+  const nonEmptyRawRows = rawRows.filter((row) =>
+    originalHeaders.some((h) => {
+      const key = Object.keys(row).find((k) => String(k).trim() === h);
+      const v = key !== undefined ? row[key] : null;
+      return v !== null && v !== undefined && v !== "";
+    })
+  );
 
   // Normalize row keys to trimmed original names
-  const rows = rawRows.map((row) => {
+  const rows = nonEmptyRawRows.map((row) => {
     const out = {};
     originalHeaders.forEach((h) => {
       const key = Object.keys(row).find((k) => String(k).trim() === h);
