@@ -170,7 +170,7 @@ ${colDefs},
   `);
 }
 
-async function insertFreeRows(tableName, columns, rows, importedBy, tableAlreadyExisted) {
+async function insertFreeRows(tableName, columns, rows, importedBy, tableAlreadyExisted, replaceMode = false) {
   const pool = await getPool();
   const safeName = sanitizeIdentifier(tableName);
   const colNames = columns.map((c) => `[${sanitizeIdentifier(c.safeName)}]`).join(", ");
@@ -184,6 +184,22 @@ async function insertFreeRows(tableName, columns, rows, importedBy, tableAlready
   const fileSignatures = new Set();
 
   try {
+    if (!tableAlreadyExisted) {
+      const colDefs = columns.map((c) =>
+        `  [${sanitizeIdentifier(c.safeName)}] ${validateType(c.selectedType)} NULL`
+      ).join(",\n");
+      await new sql.Request(transaction).query(`
+        CREATE TABLE [dbo].[${safeName}] (
+          [_id] INT IDENTITY(1,1) PRIMARY KEY,
+${colDefs},
+          [_imported_at] DATETIME2 DEFAULT GETDATE(),
+          [_imported_by] NVARCHAR(100) NULL
+        )
+      `);
+    } else if (replaceMode) {
+      await new sql.Request(transaction).query(`TRUNCATE TABLE [dbo].[${safeName}]`);
+    }
+
     for (let idx = 0; idx < rows.length; idx++) {
       const row = rows[idx];
       const converted = columns.map((col) => convertValue(row[col.originalName], col.selectedType));
@@ -200,8 +216,8 @@ async function insertFreeRows(tableName, columns, rows, importedBy, tableAlready
       }
       fileSignatures.add(sig);
 
-      // Within-table duplicate check (only if table existed before this import)
-      if (tableAlreadyExisted) {
+      // Within-table duplicate check (only if table existed before and not replacing)
+      if (tableAlreadyExisted && !replaceMode) {
         const whereClause = columns.map((col, i) =>
           converted[i] === null
             ? `[${sanitizeIdentifier(col.safeName)}] IS NULL`
@@ -316,7 +332,7 @@ async function truncateTable(tableName) {
   await pool.request().query(`TRUNCATE TABLE [dbo].[${safe}]`);
 }
 
-async function upsertFreeRows(tableName, columns, rows, importedBy, keyColIndexes) {
+async function upsertFreeRows(tableName, columns, rows, importedBy, keyColIndexes, tableAlreadyExisted) {
   const pool = await getPool();
   const safeName = sanitizeIdentifier(tableName);
   const colList = columns.map((c) => `[${sanitizeIdentifier(c.safeName)}]`).join(", ");
@@ -328,6 +344,20 @@ async function upsertFreeRows(tableName, columns, rows, importedBy, keyColIndexe
   const fileSignatures = new Set();
 
   try {
+    if (!tableAlreadyExisted) {
+      const colDefs = columns.map((c) =>
+        `  [${sanitizeIdentifier(c.safeName)}] ${validateType(c.selectedType)} NULL`
+      ).join(",\n");
+      await new sql.Request(transaction).query(`
+        CREATE TABLE [dbo].[${safeName}] (
+          [_id] INT IDENTITY(1,1) PRIMARY KEY,
+${colDefs},
+          [_imported_at] DATETIME2 DEFAULT GETDATE(),
+          [_imported_by] NVARCHAR(100) NULL
+        )
+      `);
+    }
+
     for (let idx = 0; idx < rows.length; idx++) {
       const row = rows[idx];
       const converted = columns.map((col) => convertValue(row[col.originalName], col.selectedType));

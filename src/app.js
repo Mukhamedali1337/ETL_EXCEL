@@ -478,21 +478,15 @@ app.post("/free-import", requireAuth, async (req, res) => {
     }
 
     const exists = await tableExists(tableName);
-    if (!exists) {
-      await createTable(tableName, columns);
-    }
 
     let result;
     if (mode === "replace") {
-      if (exists) {
-        await truncateTable(tableName);
-        await clearTableOwnership(tableName);
-      }
-      result = await insertFreeRows(tableName, columns, preview.rows, username, false);
+      result = await insertFreeRows(tableName, columns, preview.rows, username, exists, true);
+      if (exists) await clearTableOwnership(tableName);
     } else if (mode === "upsert") {
-      result = await upsertFreeRows(tableName, columns, preview.rows, username, keyColIndexes);
+      result = await upsertFreeRows(tableName, columns, preview.rows, username, keyColIndexes, exists);
     } else {
-      result = await insertFreeRows(tableName, columns, preview.rows, username, exists);
+      result = await insertFreeRows(tableName, columns, preview.rows, username, exists, false);
     }
 
     try {
