@@ -52,10 +52,12 @@
     <div class="card accent-card">
       <h2>Загрузить файл</h2>
       <form method="post" action="/free-upload" enctype="multipart/form-data" class="form-stack">
-        <label>
-          Excel-файл
-          <input type="file" name="excelFile" accept=".xlsx,.xls" required />
-        </label>
+        <input type="file" name="excelFile" id="excelFileInput" accept=".xlsx,.xls" required style="display:none" />
+        <label>Excel-файл</label>
+        <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;">
+          <button type="button" id="chooseFileBtn" class="ghost-button" style="padding:8px 16px;">Выбрать файл</button>
+          <span id="excelFileName" class="muted">Файл не выбран</span>
+        </div>
         <button class="primary-button" type="submit">Проверить файл</button>
       </form>
     </div>
@@ -257,10 +259,19 @@
 <% } %>
 
 <script>
-  // Clear file input on click so canceling the OS picker doesn't leave stale selection
-  const fileInput = document.querySelector('[name="excelFile"]');
-  if (fileInput) {
-    fileInput.addEventListener('click', function() { this.value = ''; });
+  // Custom file button: always clears input before opening picker
+  const chooseFileBtn = document.getElementById('chooseFileBtn');
+  const excelFileInput = document.getElementById('excelFileInput');
+  const excelFileName = document.getElementById('excelFileName');
+  if (chooseFileBtn && excelFileInput) {
+    chooseFileBtn.addEventListener('click', function() {
+      excelFileInput.value = '';
+      excelFileName.textContent = 'Файл не выбран';
+      excelFileInput.click();
+    });
+    excelFileInput.addEventListener('change', function() {
+      excelFileName.textContent = this.files[0]?.name || 'Файл не выбран';
+    });
   }
 
   // Table name preview
