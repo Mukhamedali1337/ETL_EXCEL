@@ -26,6 +26,7 @@ const {
   truncateTable,
   checkDuplicateFile: checkDuplicateFileFree,
   saveFreeImportBatch,
+  clearTableOwnership,
   getFreeTableList,
   dropFreeTable
 } = require("./services/freeImportService");
@@ -386,50 +387,60 @@ app.get("/free-upload", requireAuth, async (req, res) => {
   if (req.query.reset) {
     req.session.freePreview = null;
   }
-  const freeTables = await getFreeTableList().catch(() => []);
-  res.render("free-upload", { error: null, success: null, freeTables });
+  const { username, role } = req.session.user;
+  const isAdmin = role === "admin";
+  const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
+  res.render("free-upload", { error: null, success: null, freeTables, isAdmin });
 });
 
 app.post("/free-upload", requireAuth, upload.single("excelFile"), async (req, res) => {
+  const { username, role } = req.session.user;
+  const isAdmin = role === "admin";
   let filePath;
   try {
     if (!req.file) {
-      const freeTables = await getFreeTableList().catch(() => []);
-      return res.render("free-upload", { error: "Выберите Excel-файл для загрузки", success: null, freeTables });
+      const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
+      return res.render("free-upload", { error: "Выберите Excel-файл для загрузки", success: null, freeTables, isAdmin });
     }
     filePath = req.file.path;
     const originalname = Buffer.from(req.file.originalname, "latin1").toString("utf8");
     req.session.freePreview = parseExcelFree(filePath, originalname);
     return res.redirect("/free-upload");
   } catch (err) {
-    const freeTables = await getFreeTableList().catch(() => []);
-    return res.render("free-upload", { error: err.message, success: null, freeTables });
+    const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
+    return res.render("free-upload", { error: err.message, success: null, freeTables, isAdmin });
   } finally {
     if (filePath && fs.existsSync(filePath)) fs.unlinkSync(filePath);
   }
 });
 
 app.post("/free-drop", requireAuth, async (req, res) => {
+  const { username, role } = req.session.user;
+  const isAdmin = role === "admin";
   let successMsg = null;
   let errorMsg = null;
   try {
     const tableName = sanitizeFreeId(String(req.body.tableName || "").trim());
     if (!tableName.startsWith("free_")) throw new Error("Можно удалять только таблицы с префиксом free_");
-    await dropFreeTable(tableName);
+    const dropResult = await dropFreeTable(tableName, username, isAdmin);
     req.session.freePreview = null;
-    successMsg = `Таблица [${tableName}] успешно удалена`;
+    successMsg = dropResult.dropped
+      ? `Таблица [${tableName}] полностью удалена`
+      : `Ваши строки из [${tableName}] удалены (${dropResult.deleted} записей)`;
   } catch (err) {
     errorMsg = err.message;
   }
-  const freeTables = await getFreeTableList().catch(() => []);
-  return res.render("free-upload", { error: errorMsg, success: successMsg, freeTables, skippedRows: null });
+  const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
+  return res.render("free-upload", { error: errorMsg, success: successMsg, freeTables, isAdmin, skippedRows: null });
 });
 
 app.post("/free-import", requireAuth, async (req, res) => {
+  const { username, role } = req.session.user;
+  const isAdmin = role === "admin";
   const preview = req.session.freePreview;
   if (!preview) {
-    const freeTables = await getFreeTableList().catch(() => []);
-    return res.render("free-upload", { error: "Сначала загрузите файл", success: null, freeTables, skippedRows: null });
+    const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
+    return res.render("free-upload", { error: "Сначала загрузите файл", success: null, freeTables, isAdmin, skippedRows: null });
   }
 
   try {
@@ -448,20 +459,20 @@ app.post("/free-import", requireAuth, async (req, res) => {
     }));
 
     if (mode === "upsert" && keyColIndexes.length === 0) {
-      const freeTables = await getFreeTableList().catch(() => []);
+      const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
       return res.render("free-upload", {
         error: "Для режима UPSERT выберите хотя бы один ключевой столбец",
-        success: null, freeTables, skippedRows: null
+        success: null, freeTables, isAdmin, skippedRows: null
       });
     }
 
     if (mode === "insert") {
       const duplicate = await checkDuplicateFileFree(preview.fileHash);
       if (duplicate) {
-        const freeTables = await getFreeTableList().catch(() => []);
+        const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
         return res.render("free-upload", {
           error: `Этот файл уже был загружен ранее (${new Date(duplicate.uploaded_at).toLocaleString("ru-RU")}). Если хотите загрузить другой файл — нажмите «Отмена».`,
-          success: null, freeTables, skippedRows: null
+          success: null, freeTables, isAdmin, skippedRows: null
         });
       }
     }
@@ -473,12 +484,15 @@ app.post("/free-import", requireAuth, async (req, res) => {
 
     let result;
     if (mode === "replace") {
-      if (exists) await truncateTable(tableName);
-      result = await insertFreeRows(tableName, columns, preview.rows, req.session.user.username, false);
+      if (exists) {
+        await truncateTable(tableName);
+        await clearTableOwnership(tableName);
+      }
+      result = await insertFreeRows(tableName, columns, preview.rows, username, false);
     } else if (mode === "upsert") {
-      result = await upsertFreeRows(tableName, columns, preview.rows, req.session.user.username, keyColIndexes);
+      result = await upsertFreeRows(tableName, columns, preview.rows, username, keyColIndexes);
     } else {
-      result = await insertFreeRows(tableName, columns, preview.rows, req.session.user.username, exists);
+      result = await insertFreeRows(tableName, columns, preview.rows, username, exists);
     }
 
     try {
@@ -487,7 +501,7 @@ app.post("/free-import", requireAuth, async (req, res) => {
         fileName: preview.originalFileName,
         tableName,
         rowCount: result.inserted,
-        uploadedBy: req.session.user.username
+        uploadedBy: username
       });
     } catch { /* non-critical — hash may already exist for replace/upsert re-uploads */ }
 
@@ -499,11 +513,11 @@ app.post("/free-import", requireAuth, async (req, res) => {
       ? `${modeLabel} завершена. Таблица [${tableName}]: вставлено ${result.inserted}${skipNote}`
       : `Таблица [${tableName}] создана. Вставлено: ${result.inserted}`;
 
-    const freeTables = await getFreeTableList().catch(() => []);
-    return res.render("free-upload", { error: null, success: msg, skippedRows: result.skippedRows.slice(0, 100), freeTables });
+    const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
+    return res.render("free-upload", { error: null, success: msg, skippedRows: result.skippedRows.slice(0, 100), freeTables, isAdmin });
   } catch (err) {
-    const freeTables = await getFreeTableList().catch(() => []);
-    return res.render("free-upload", { error: `Ошибка импорта: ${err.message}`, success: null, skippedRows: null, freeTables });
+    const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
+    return res.render("free-upload", { error: `Ошибка импорта: ${err.message}`, success: null, skippedRows: null, freeTables, isAdmin });
   }
 });
 

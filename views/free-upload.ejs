@@ -80,10 +80,17 @@
                 <td><code><%= tbl.name %></code></td>
                 <td style="text-align:right;"><%= Number(tbl.row_count).toLocaleString("ru-RU") %></td>
                 <td style="text-align:right;">
+                  <% if (isAdmin) { %>
                   <form method="post" action="/free-drop" style="display:inline;" onsubmit="return confirm('Удалить таблицу <%= tbl.name %>?\nВсе данные будут потеряны — это действие необратимо.')">
                     <input type="hidden" name="tableName" value="<%= tbl.name %>" />
-                    <button type="submit" class="ghost-button" style="color:#c0392b; border-color:#c0392b; padding:4px 10px; font-size:0.85em;">Удалить</button>
+                    <button type="submit" class="ghost-button" style="color:#c0392b; border-color:#c0392b; padding:4px 10px; font-size:0.85em;">Удалить таблицу</button>
                   </form>
+                  <% } else { %>
+                  <form method="post" action="/free-drop" style="display:inline;" onsubmit="return confirm('Удалить ваши строки из таблицы <%= tbl.name %>?')">
+                    <input type="hidden" name="tableName" value="<%= tbl.name %>" />
+                    <button type="submit" class="ghost-button" style="color:#e67e22; border-color:#e67e22; padding:4px 10px; font-size:0.85em;">Удалить мои строки</button>
+                  </form>
+                  <% } %>
                 </td>
               </tr>
             <% }) %>

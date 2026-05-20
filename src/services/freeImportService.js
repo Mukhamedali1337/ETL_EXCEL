@@ -246,24 +246,61 @@ async function insertFreeRows(tableName, columns, rows, importedBy, tableAlready
   return { inserted: insertedCount, skippedRows };
 }
 
-async function getFreeTableList() {
+async function getFreeTableList(username, isAdmin) {
   const pool = await getPool();
-  const result = await pool.request().query(`
-    SELECT t.name, SUM(p.rows) AS row_count, t.create_date
-    FROM sys.tables t
-    INNER JOIN sys.partitions p ON t.object_id = p.object_id AND p.index_id IN (0,1)
-    WHERE t.schema_id = SCHEMA_ID('dbo') AND t.name LIKE 'free[_]%'
-    GROUP BY t.name, t.create_date
-    ORDER BY t.create_date DESC
-  `);
+  if (isAdmin) {
+    const result = await pool.request().query(`
+      SELECT t.name, SUM(p.rows) AS row_count, t.create_date
+      FROM sys.tables t
+      INNER JOIN sys.partitions p ON t.object_id = p.object_id AND p.index_id IN (0,1)
+      WHERE t.schema_id = SCHEMA_ID('dbo') AND t.name LIKE 'free[_]%'
+      GROUP BY t.name, t.create_date
+      ORDER BY t.create_date DESC
+    `);
+    return result.recordset;
+  }
+  // Regular user: only tables they have uploaded to
+  const result = await pool.request()
+    .input("uname", sql.NVarChar(100), username)
+    .query(`
+      SELECT t.name, SUM(p.rows) AS row_count, t.create_date
+      FROM sys.tables t
+      INNER JOIN sys.partitions p ON t.object_id = p.object_id AND p.index_id IN (0,1)
+      INNER JOIN (
+        SELECT DISTINCT table_name FROM [dbo].[free_import_batches] WHERE uploaded_by = @uname
+      ) ub ON t.name = ub.table_name
+      WHERE t.schema_id = SCHEMA_ID('dbo') AND t.name LIKE 'free[_]%'
+      GROUP BY t.name, t.create_date
+      ORDER BY t.create_date DESC
+    `);
   return result.recordset;
 }
 
-async function dropFreeTable(tableName) {
+async function dropFreeTable(tableName, username, isAdmin) {
   const safe = sanitizeIdentifier(tableName);
   if (!safe.startsWith("free_")) throw new Error("Можно удалять только таблицы с префиксом free_");
   const pool = await getPool();
-  await pool.request().query(`DROP TABLE [dbo].[${safe}]`);
+  if (isAdmin) {
+    await pool.request().query(`DROP TABLE [dbo].[${safe}]`);
+    await pool.request()
+      .input("tbl", sql.NVarChar(128), safe)
+      .query(`DELETE FROM [dbo].[free_import_batches] WHERE table_name = @tbl`);
+    return { dropped: true };
+  }
+  // Regular user: delete only their rows
+  const result = await pool.request()
+    .input("uname", sql.NVarChar(100), username)
+    .query(`DELETE FROM [dbo].[${safe}] WHERE [_imported_by] = @uname; SELECT @@ROWCOUNT AS deleted`);
+  const deleted = result.recordset[0]?.deleted ?? 0;
+  return { dropped: false, deleted };
+}
+
+async function clearTableOwnership(tableName) {
+  const safe = sanitizeIdentifier(tableName);
+  const pool = await getPool();
+  await pool.request()
+    .input("tbl", sql.NVarChar(128), safe)
+    .query(`DELETE FROM [dbo].[free_import_batches] WHERE table_name = @tbl`);
 }
 
 async function truncateTable(tableName) {
@@ -364,7 +401,7 @@ async function saveFreeImportBatch({ fileHash, fileName, tableName, rowCount, up
 module.exports = {
   sanitizeIdentifier, parseExcelFree,
   tableExists, createTable, insertFreeRows, upsertFreeRows, truncateTable,
-  checkDuplicateFile, saveFreeImportBatch,
+  checkDuplicateFile, saveFreeImportBatch, clearTableOwnership,
   getFreeTableList, dropFreeTable,
   ALLOWED_TYPES
 };
