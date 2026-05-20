@@ -45,7 +45,7 @@
         <li>Заголовки колонок станут именами столбцов</li>
         <li>Система автоматически определит типы данных</li>
         <li>Вы можете скорректировать типы перед импортом</li>
-        <li>Если таблица уже существует — данные добавятся к ней</li>
+        <li>Если таблица уже существует — выберите режим: добавить, заменить или обновить</li>
       </ul>
     </div>
 
@@ -60,6 +60,38 @@
       </form>
     </div>
   </section>
+
+  <% if (typeof freeTables !== 'undefined' && freeTables && freeTables.length > 0) { %>
+    <section class="card" style="margin-top:20px;">
+      <h2>Существующие таблицы</h2>
+      <p class="muted" style="margin-bottom:12px;">Таблицы, созданные через свободную загрузку.</p>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Таблица</th>
+              <th style="text-align:right;">Строк</th>
+              <th></th>
+            </tr>
+          </thead>
+          <tbody>
+            <% freeTables.forEach(tbl => { %>
+              <tr>
+                <td><code><%= tbl.name %></code></td>
+                <td style="text-align:right;"><%= Number(tbl.row_count).toLocaleString("ru-RU") %></td>
+                <td style="text-align:right;">
+                  <form method="post" action="/free-drop" style="display:inline;" onsubmit="return confirm('Удалить таблицу <%= tbl.name %>?\nВсе данные будут потеряны — это действие необратимо.')">
+                    <input type="hidden" name="tableName" value="<%= tbl.name %>" />
+                    <button type="submit" class="ghost-button" style="color:#c0392b; border-color:#c0392b; padding:4px 10px; font-size:0.85em;">Удалить</button>
+                  </form>
+                </td>
+              </tr>
+            <% }) %>
+          </tbody>
+        </table>
+      </div>
+    </section>
+  <% } %>
 
 <% } else { %>
 
@@ -85,12 +117,17 @@
       <section class="card">
         <h2>Имя таблицы</h2>
         <p class="muted" style="margin-bottom:12px;">По умолчанию — имя файла. Можно изменить.</p>
-        <input
-          type="text"
-          name="tableName"
-          value="<%= freePreview.tableName %>"
-          required
-        />
+        <div style="display:flex; align-items:stretch;">
+          <span style="display:flex; align-items:center; padding:0 10px; background:var(--bg-alt,#f4f4f4); border:1px solid var(--border,#ccc); border-right:none; border-radius:6px 0 0 6px; font-family:monospace; font-size:0.95em; color:var(--muted); white-space:nowrap;">free_</span>
+          <input
+            type="text"
+            name="tableNameSuffix"
+            value="<%= freePreview.tableName %>"
+            required
+            style="border-radius:0 6px 6px 0; flex:1;"
+          />
+        </div>
+        <p class="muted" style="margin-top:6px; font-size:0.85em;">Итоговое имя в БД: <code id="tableNamePreview">free_<%= freePreview.tableName %></code></p>
       </section>
 
       <section class="card accent-card">
@@ -112,6 +149,49 @@
         </div>
       </section>
     </div>
+
+    <section class="card" style="margin-bottom:20px;">
+      <h2>Режим импорта</h2>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;">
+        <label style="display:flex; align-items:flex-start; gap:10px; padding:14px 18px; border:2px solid var(--border,#ccc); border-radius:8px; cursor:pointer; flex:1; min-width:180px; background:var(--bg,#fff);">
+          <input type="radio" name="mode" value="insert" checked style="margin-top:3px; flex-shrink:0;" />
+          <div>
+            <strong style="display:block; margin-bottom:4px;">INSERT</strong>
+            <span class="muted" style="font-size:0.85em;">Добавить новые строки, пропустить дубли</span>
+          </div>
+        </label>
+        <label style="display:flex; align-items:flex-start; gap:10px; padding:14px 18px; border:2px solid var(--border,#ccc); border-radius:8px; cursor:pointer; flex:1; min-width:180px; background:var(--bg,#fff);">
+          <input type="radio" name="mode" value="replace" style="margin-top:3px; flex-shrink:0;" />
+          <div>
+            <strong style="display:block; margin-bottom:4px;">REPLACE</strong>
+            <span class="muted" style="font-size:0.85em;">Очистить таблицу и залить заново</span>
+          </div>
+        </label>
+        <label style="display:flex; align-items:flex-start; gap:10px; padding:14px 18px; border:2px solid var(--border,#ccc); border-radius:8px; cursor:pointer; flex:1; min-width:180px; background:var(--bg,#fff);">
+          <input type="radio" name="mode" value="upsert" style="margin-top:3px; flex-shrink:0;" />
+          <div>
+            <strong style="display:block; margin-bottom:4px;">UPSERT</strong>
+            <span class="muted" style="font-size:0.85em;">Обновить существующие, добавить новые</span>
+          </div>
+        </label>
+      </div>
+
+      <div id="replace-warning" style="display:none; margin-top:12px; padding:12px 16px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; color:#856404;">
+        <strong>Внимание:</strong> Если таблица уже существует, все её данные будут удалены перед загрузкой. Это действие необратимо.
+      </div>
+
+      <div id="upsert-keys" style="display:none; margin-top:14px;">
+        <p style="margin-bottom:10px;"><strong>Ключевые столбцы</strong> — по ним система ищет совпадающие записи для обновления:</p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <% freePreview.columns.forEach((col, i) => { %>
+            <label style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid var(--border,#ccc); border-radius:6px; cursor:pointer; background:var(--bg-alt,#f4f4f4); font-size:0.9em;">
+              <input type="checkbox" name="keyColumns" value="<%= i %>" />
+              <code id="key-label-<%= i %>"><%= col.safeName %></code>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+    </section>
 
     <section class="card" style="margin-bottom:20px;">
       <h2>Схема и примеры данных</h2>
@@ -169,4 +249,37 @@
 
 <% } %>
 
+<script>
+  // Table name preview
+  const suffixInput = document.querySelector('[name="tableNameSuffix"]');
+  const tablePreview = document.getElementById('tableNamePreview');
+  if (suffixInput && tablePreview) {
+    suffixInput.addEventListener('input', () => {
+      tablePreview.textContent = 'free_' + suffixInput.value;
+    });
+  }
+
+  // Mode selector
+  const modeRadios = document.querySelectorAll('[name="mode"]');
+  const replaceWarning = document.getElementById('replace-warning');
+  const upsertKeys = document.getElementById('upsert-keys');
+
+  function updateMode() {
+    const mode = document.querySelector('[name="mode"]:checked')?.value;
+    if (replaceWarning) replaceWarning.style.display = mode === 'replace' ? 'block' : 'none';
+    if (upsertKeys) upsertKeys.style.display = mode === 'upsert' ? 'block' : 'none';
+  }
+
+  modeRadios.forEach(r => r.addEventListener('change', updateMode));
+
+  // Keep key column labels in sync with user-edited column names
+  document.querySelectorAll('.col-name-input').forEach((inp, i) => {
+    const label = document.getElementById('key-label-' + i);
+    if (label) {
+      inp.addEventListener('input', () => {
+        label.textContent = inp.value || ('col_' + i);
+      });
+    }
+  });
+</script>
 <%- include("partials/footer") %>

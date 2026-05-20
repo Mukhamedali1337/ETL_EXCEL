@@ -246,6 +246,101 @@ async function insertFreeRows(tableName, columns, rows, importedBy, tableAlready
   return { inserted: insertedCount, skippedRows };
 }
 
+async function getFreeTableList() {
+  const pool = await getPool();
+  const result = await pool.request().query(`
+    SELECT t.name, SUM(p.rows) AS row_count, t.create_date
+    FROM sys.tables t
+    INNER JOIN sys.partitions p ON t.object_id = p.object_id AND p.index_id IN (0,1)
+    WHERE t.schema_id = SCHEMA_ID('dbo') AND t.name LIKE 'free[_]%'
+    GROUP BY t.name, t.create_date
+    ORDER BY t.create_date DESC
+  `);
+  return result.recordset;
+}
+
+async function dropFreeTable(tableName) {
+  const safe = sanitizeIdentifier(tableName);
+  if (!safe.startsWith("free_")) throw new Error("Можно удалять только таблицы с префиксом free_");
+  const pool = await getPool();
+  await pool.request().query(`DROP TABLE [dbo].[${safe}]`);
+}
+
+async function truncateTable(tableName) {
+  const safe = sanitizeIdentifier(tableName);
+  if (!safe.startsWith("free_")) throw new Error("Можно очищать только таблицы с префиксом free_");
+  const pool = await getPool();
+  await pool.request().query(`TRUNCATE TABLE [dbo].[${safe}]`);
+}
+
+async function upsertFreeRows(tableName, columns, rows, importedBy, keyColIndexes) {
+  const pool = await getPool();
+  const safeName = sanitizeIdentifier(tableName);
+  const colList = columns.map((c) => `[${sanitizeIdentifier(c.safeName)}]`).join(", ");
+
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+
+  let processedCount = 0;
+  const fileSignatures = new Set();
+
+  try {
+    for (let idx = 0; idx < rows.length; idx++) {
+      const row = rows[idx];
+      const converted = columns.map((col) => convertValue(row[col.originalName], col.selectedType));
+
+      const sig = JSON.stringify(converted);
+      if (fileSignatures.has(sig)) continue;
+      fileSignatures.add(sig);
+
+      const srcSelect = columns.map((col, i) => `@c${i} AS [${sanitizeIdentifier(col.safeName)}]`).join(", ");
+      const srcColList = columns.map((col) => `src.[${sanitizeIdentifier(col.safeName)}]`).join(", ");
+
+      const onParts = keyColIndexes.map((ki) => {
+        const col = columns[ki];
+        if (!col) return null;
+        const safe = sanitizeIdentifier(col.safeName);
+        return converted[ki] === null
+          ? `(target.[${safe}] IS NULL AND src.[${safe}] IS NULL)`
+          : `target.[${safe}] = src.[${safe}]`;
+      }).filter(Boolean);
+
+      if (onParts.length === 0) continue;
+      const onClause = onParts.join(" AND ");
+
+      const nonKeyIndexes = columns.map((_, i) => i).filter((i) => !keyColIndexes.includes(i));
+      const updateParts = nonKeyIndexes.map((i) =>
+        `target.[${sanitizeIdentifier(columns[i].safeName)}] = src.[${sanitizeIdentifier(columns[i].safeName)}]`
+      );
+
+      const req = new sql.Request(transaction);
+      columns.forEach((col, i) => req.input(`c${i}`, getSqlType(col.selectedType), converted[i]));
+      req.input("imp", sql.NVarChar(100), importedBy || null);
+
+      const whenMatched = updateParts.length > 0
+        ? `WHEN MATCHED THEN UPDATE SET ${updateParts.join(", ")}, target.[_imported_by] = @imp`
+        : "";
+
+      await req.query(`
+        MERGE [dbo].[${safeName}] AS target
+        USING (SELECT ${srcSelect}) AS src
+          ON ${onClause}
+        ${whenMatched}
+        WHEN NOT MATCHED THEN INSERT (${colList}, [_imported_by]) VALUES (${srcColList}, @imp);
+      `);
+
+      processedCount++;
+    }
+
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+
+  return { inserted: processedCount, skippedRows: [] };
+}
+
 async function checkDuplicateFile(fileHash) {
   const pool = await getPool();
   const result = await pool.request()
@@ -266,4 +361,10 @@ async function saveFreeImportBatch({ fileHash, fileName, tableName, rowCount, up
             VALUES (@hash, @fileName, @tableName, @rowCount, @uploadedBy)`);
 }
 
-module.exports = { sanitizeIdentifier, parseExcelFree, tableExists, createTable, insertFreeRows, checkDuplicateFile, saveFreeImportBatch, ALLOWED_TYPES };
+module.exports = {
+  sanitizeIdentifier, parseExcelFree,
+  tableExists, createTable, insertFreeRows, upsertFreeRows, truncateTable,
+  checkDuplicateFile, saveFreeImportBatch,
+  getFreeTableList, dropFreeTable,
+  ALLOWED_TYPES
+};

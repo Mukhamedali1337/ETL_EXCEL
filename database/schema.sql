@@ -110,11 +110,12 @@ BEGIN
     CREATE TABLE [dbo].[welcome_attendance] (
         [id] INT IDENTITY(1,1) PRIMARY KEY,
         [training_date] DATE NULL,
-        [iin] NVARCHAR(20) NULL,
+        [employee_iin] NVARCHAR(20) NULL,
         [department] NVARCHAR(255) NULL,
         [employee_name] NVARCHAR(255) NULL,
         [position] NVARCHAR(255) NULL,
         [attended] NVARCHAR(20) NULL,
+        [trainer_iin] NVARCHAR(12) NULL,
         [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
         [_imported_by] NVARCHAR(100) NULL
     );
@@ -136,8 +137,9 @@ BEGIN
         [training_rate_pct] FLOAT NULL,
         [kpi_pct] FLOAT NULL,
         [kpi_growth_pct] FLOAT NULL,
-        [payment_fixed] DECIMAL(10,2) NULL,
-        [payment_bonus] DECIMAL(10,2) NULL,
+        [payment_fixed] DECIMAL(10,3) NULL,
+        [payment_bonus] DECIMAL(10,3) NULL,
+        [has_certificate] NVARCHAR(20) NULL,
         [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
         [_imported_by] NVARCHAR(100) NULL
     );
@@ -148,9 +150,11 @@ IF NOT EXISTS (SELECT * FROM sys.objects WHERE object_id = OBJECT_ID(N'[dbo].[at
 BEGIN
     CREATE TABLE [dbo].[attestation] (
         [id] INT IDENTITY(1,1) PRIMARY KEY,
+        [attestation_id] NVARCHAR(48) NULL,
+        [attestation_name] NVARCHAR(48) NULL,
         [exam_date] DATE NULL,
-        [iin] NVARCHAR(20) NULL,
-        [full_name] NVARCHAR(255) NULL,
+        [employee_iin] NVARCHAR(20) NULL,
+        [employee_name] NVARCHAR(255) NULL,
         [bonus_score] FLOAT NULL,
         [confirmed] NVARCHAR(5) NULL,
         [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
@@ -164,8 +168,8 @@ BEGIN
     CREATE TABLE [dbo].[school_sessions] (
         [id] INT IDENTITY(1,1) PRIMARY KEY,
         [school_type] NVARCHAR(50) NULL,
-        [iin] NVARCHAR(20) NULL,
-        [name] NVARCHAR(255) NULL,
+        [employee_iin] NVARCHAR(20) NULL,
+        [employee_name] NVARCHAR(255) NULL,
         [group_number] INT NULL,
         [training_date] DATE NULL,
         [module_name] NVARCHAR(255) NULL,
@@ -173,6 +177,7 @@ BEGIN
         [attendance_score] FLOAT NULL,
         [homework_deadline_score] FLOAT NULL,
         [homework_quality_score] FLOAT NULL,
+        [completed] NVARCHAR(12) NULL,
         [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
         [_imported_by] NVARCHAR(100) NULL
     );
@@ -188,12 +193,13 @@ BEGIN
         [training_name] NVARCHAR(255) NULL,
         [employee_iin] NVARCHAR(20) NULL,
         [employee_name] NVARCHAR(255) NULL,
-        [status] NVARCHAR(50) NULL,
         [employee_rating] FLOAT NULL,
         [manager_rating] FLOAT NULL,
         [hours] FLOAT NULL,
         [cost] DECIMAL(10,2) NULL,
         [commitment_months] INT NULL,
+        [repayment_term_months] INT NULL,
+        [cost_30pct] DECIMAL(10,3) NULL,
         [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
         [_imported_by] NVARCHAR(100) NULL
     );
@@ -216,6 +222,7 @@ BEGIN
         [employee_rating] FLOAT NULL,
         [manager_rating] FLOAT NULL,
         [hours] FLOAT NULL,
+        [conduct_cost] DECIMAL(10,3) NULL,
         [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
         [_imported_by] NVARCHAR(100) NULL
     );
@@ -231,7 +238,7 @@ BEGIN
         [topic] NVARCHAR(255) NULL,
         [location] NVARCHAR(255) NULL,
         [format] NVARCHAR(20) NULL,
-        [iin] NVARCHAR(20) NULL,
+        [employee_iin] NVARCHAR(20) NULL,
         [employee_name] NVARCHAR(255) NULL,
         [attended] NVARCHAR(20) NULL,
         [score] FLOAT NULL,
@@ -251,20 +258,94 @@ BEGIN
         [mentor_iin] NVARCHAR(20) NULL,
         [mentor_name] NVARCHAR(255) NULL,
         [mentor_category] NVARCHAR(10) NULL,
-        [internship_start_date] DATE NULL,
-        [score_intro] INT NULL,
-        [score_test] INT NULL,
-        [score_monthly_training] INT NULL,
-        [score_to] INT NULL,
-        [score_accessories] INT NULL,
-        [score_smarts] INT NULL,
-        [score_services] INT NULL,
-        [penalty_nps] INT NULL,
-        [total_score] INT NULL,
-        [score_value] DECIMAL(10,2) NULL,
+        [total_score] FLOAT NULL,
         [total_amount] DECIMAL(10,2) NULL,
+        [intern_status] NVARCHAR(12) NULL,
         [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
         [_imported_by] NVARCHAR(100) NULL
     );
 END;
+GO
+
+-- ============================================================
+-- MIGRATIONS — idempotent, run on every app start
+-- ============================================================
+
+-- welcome_attendance: rename iin → employee_iin, add trainer_iin
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.welcome_attendance') AND name = 'iin')
+    EXEC sp_rename 'dbo.welcome_attendance.iin', 'employee_iin', 'COLUMN';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.welcome_attendance') AND name = 'trainer_iin')
+    ALTER TABLE [dbo].[welcome_attendance] ADD [trainer_iin] NVARCHAR(12) NULL;
+GO
+
+-- internal_trainer_sessions: DECIMAL(10,2) → DECIMAL(10,3) for payments, add has_certificate
+ALTER TABLE [dbo].[internal_trainer_sessions] ALTER COLUMN [payment_fixed] DECIMAL(10,3) NULL;
+ALTER TABLE [dbo].[internal_trainer_sessions] ALTER COLUMN [payment_bonus] DECIMAL(10,3) NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.internal_trainer_sessions') AND name = 'has_certificate')
+    ALTER TABLE [dbo].[internal_trainer_sessions] ADD [has_certificate] NVARCHAR(20) NULL;
+GO
+
+-- attestation: rename iin → employee_iin, rename full_name → employee_name, add attestation_id / attestation_name
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.attestation') AND name = 'iin')
+    EXEC sp_rename 'dbo.attestation.iin', 'employee_iin', 'COLUMN';
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.attestation') AND name = 'full_name')
+    EXEC sp_rename 'dbo.attestation.full_name', 'employee_name', 'COLUMN';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.attestation') AND name = 'attestation_id')
+    ALTER TABLE [dbo].[attestation] ADD [attestation_id] NVARCHAR(48) NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.attestation') AND name = 'attestation_name')
+    ALTER TABLE [dbo].[attestation] ADD [attestation_name] NVARCHAR(48) NULL;
+GO
+
+-- school_sessions: rename iin → employee_iin, rename name → employee_name, add completed
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.school_sessions') AND name = 'iin')
+    EXEC sp_rename 'dbo.school_sessions.iin', 'employee_iin', 'COLUMN';
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.school_sessions') AND name = 'name')
+    EXEC sp_rename 'dbo.school_sessions.name', 'employee_name', 'COLUMN';
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.school_sessions') AND name = 'completed')
+    ALTER TABLE [dbo].[school_sessions] ADD [completed] NVARCHAR(12) NULL;
+GO
+
+-- external_training: drop status, add repayment_term_months + cost_30pct
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.external_training') AND name = 'status')
+    ALTER TABLE [dbo].[external_training] DROP COLUMN [status];
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.external_training') AND name = 'repayment_term_months')
+    ALTER TABLE [dbo].[external_training] ADD [repayment_term_months] INT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.external_training') AND name = 'cost_30pct')
+    ALTER TABLE [dbo].[external_training] ADD [cost_30pct] DECIMAL(10,3) NULL;
+GO
+
+-- internal_training: add conduct_cost
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.internal_training') AND name = 'conduct_cost')
+    ALTER TABLE [dbo].[internal_training] ADD [conduct_cost] DECIMAL(10,3) NULL;
+GO
+
+-- vendor_training: rename iin → employee_iin
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.vendor_training') AND name = 'iin')
+    EXEC sp_rename 'dbo.vendor_training.iin', 'employee_iin', 'COLUMN';
+GO
+
+-- mentorship_program: drop obsolete columns, change total_score INT→FLOAT, add intern_status
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'internship_start_date')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [internship_start_date];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'score_intro')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [score_intro];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'score_test')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [score_test];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'score_monthly_training')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [score_monthly_training];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'score_to')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [score_to];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'score_accessories')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [score_accessories];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'score_smarts')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [score_smarts];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'score_services')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [score_services];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'penalty_nps')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [penalty_nps];
+IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'score_value')
+    ALTER TABLE [dbo].[mentorship_program] DROP COLUMN [score_value];
+ALTER TABLE [dbo].[mentorship_program] ALTER COLUMN [total_score] FLOAT NULL;
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'intern_status')
+    ALTER TABLE [dbo].[mentorship_program] ADD [intern_status] NVARCHAR(12) NULL;
 GO

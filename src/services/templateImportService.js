@@ -16,7 +16,10 @@ function getSqlType(type) {
   if (type === "FLOAT") return sql.Float;
   if (type === "DATE")  return sql.Date;
   if (type === "BIT")   return sql.Bit;
-  if (/^DECIMAL/i.test(type)) return sql.Decimal(10, 2);
+  if (/^DECIMAL/i.test(type)) {
+    const dm = type.match(/^DECIMAL\((\d+),\s*(\d+)\)$/i);
+    return dm ? sql.Decimal(parseInt(dm[1], 10), parseInt(dm[2], 10)) : sql.Decimal(10, 2);
+  }
   if (type === "NVARCHAR(MAX)") return sql.NVarChar(sql.MAX);
   const m = type.match(/^NVARCHAR\((\d+)\)$/i);
   if (m) return sql.NVarChar(parseInt(m[1], 10));
@@ -103,13 +106,15 @@ function parseTemplateExcel(filePath, template) {
       });
     }
 
-    // Within-file duplicate check
-    const sig = JSON.stringify(rowObj);
-    if (fileSignatures.has(sig)) {
+    // Within-file duplicate check (by uniqueKey if defined, else full row)
+    const sigKey = template.uniqueKey
+      ? JSON.stringify(template.uniqueKey.map((k) => rowObj[k]))
+      : JSON.stringify(rowObj);
+    if (fileSignatures.has(sigKey)) {
       errors.push({ rowNumber, field: "duplicate", message: "Дубликат внутри файла" });
       return;
     }
-    fileSignatures.add(sig);
+    fileSignatures.add(sigKey);
 
     validRows.push({ ...rowObj, _rowNumber: rowNumber });
   });
@@ -135,6 +140,11 @@ async function insertTemplateRows(template, rows, importedBy) {
     ...(template.autoFields || [])
   ];
 
+  // Columns used for duplicate detection (subset if uniqueKey defined, else all)
+  const checkCols = template.uniqueKey && template.uniqueKey.length > 0
+    ? allCols.filter((c) => template.uniqueKey.includes(c.sqlName))
+    : allCols;
+
   const colNames = allCols.map((c) => `[${c.sqlName}]`).join(", ");
   const paramRefs = allCols.map((_, i) => `@c${i}`).join(", ");
 
@@ -148,8 +158,8 @@ async function insertTemplateRows(template, rows, importedBy) {
     for (const row of rows) {
       const rowNumber = row._rowNumber;
 
-      // Within-table duplicate check
-      const whereClause = allCols.map((col, i) => {
+      // Within-table duplicate check (uses uniqueKey columns or all columns)
+      const whereClause = checkCols.map((col, i) => {
         const val = row[col.sqlName];
         return val === null
           ? `[${col.sqlName}] IS NULL`
@@ -157,7 +167,7 @@ async function insertTemplateRows(template, rows, importedBy) {
       }).join(" AND ");
 
       const checkReq = new sql.Request(transaction);
-      allCols.forEach((col, i) => {
+      checkCols.forEach((col, i) => {
         const val = row[col.sqlName];
         if (val !== null) checkReq.input(`chk${i}`, getSqlType(col.type), val);
       });

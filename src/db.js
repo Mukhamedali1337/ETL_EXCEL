@@ -19,13 +19,14 @@ async function ensureSchema(pool) {
   if (schemaPromise) return schemaPromise;
 
   schemaPromise = (async () => {
-    const schemaPath = path.join(process.cwd(), "database", "schema.sql");
+    const schemaPath = path.join(__dirname, "..", "database", "schema.sql");
     const schemaText = fs.readFileSync(schemaPath, "utf8");
     const batches = splitSqlBatches(schemaText);
 
     logger.info("Ensuring MSSQL schema...", {
       schemaPath,
-      batches: batches.length
+      batches: batches.length,
+      fileBytes: schemaText.length
     });
 
     for (const batch of batches) {
