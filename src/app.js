@@ -390,7 +390,7 @@ app.get("/free-upload", requireAuth, async (req, res) => {
   const { username, role } = req.session.user;
   const isAdmin = role === "admin";
   const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
-  res.render("free-upload", { error: null, success: null, freeTables, isAdmin });
+  res.render("free-upload", { error: null, success: null, freeTables, isAdmin, freePreview: req.session.freePreview || null });
 });
 
 app.post("/free-upload", requireAuth, upload.single("excelFile"), async (req, res) => {
