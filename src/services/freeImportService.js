@@ -259,21 +259,27 @@ async function getFreeTableList(username, isAdmin) {
     `);
     return result.recordset;
   }
-  // Regular user: only tables they have uploaded to
-  const result = await pool.request()
+  // Regular user: only their tables, count only their rows
+  const tablesResult = await pool.request()
     .input("uname", sql.NVarChar(100), username)
     .query(`
-      SELECT t.name, SUM(p.rows) AS row_count, t.create_date
+      SELECT DISTINCT t.name, t.create_date
       FROM sys.tables t
-      INNER JOIN sys.partitions p ON t.object_id = p.object_id AND p.index_id IN (0,1)
       INNER JOIN (
         SELECT DISTINCT table_name FROM [dbo].[free_import_batches] WHERE uploaded_by = @uname
       ) ub ON t.name = ub.table_name
       WHERE t.schema_id = SCHEMA_ID('dbo') AND t.name LIKE 'free[_]%'
-      GROUP BY t.name, t.create_date
       ORDER BY t.create_date DESC
     `);
-  return result.recordset;
+  const rows = [];
+  for (const tbl of tablesResult.recordset) {
+    const safe = sanitizeIdentifier(tbl.name);
+    const cnt = await pool.request()
+      .input("uname", sql.NVarChar(100), username)
+      .query(`SELECT COUNT(*) AS row_count FROM [dbo].[${safe}] WHERE [_imported_by] = @uname`);
+    rows.push({ name: tbl.name, row_count: cnt.recordset[0].row_count, create_date: tbl.create_date });
+  }
+  return rows;
 }
 
 async function dropFreeTable(tableName, username, isAdmin) {

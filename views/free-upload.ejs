@@ -257,6 +257,12 @@
 <% } %>
 
 <script>
+  // Clear file input on click so canceling the OS picker doesn't leave stale selection
+  const fileInput = document.querySelector('[name="excelFile"]');
+  if (fileInput) {
+    fileInput.addEventListener('click', function() { this.value = ''; });
+  }
+
   // Table name preview
   const suffixInput = document.querySelector('[name="tableNameSuffix"]');
   const tablePreview = document.getElementById('tableNamePreview');
