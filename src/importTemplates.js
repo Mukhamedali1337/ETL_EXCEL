@@ -152,7 +152,7 @@ const importTemplates = [
       { excelHeader: "Оценка курса сотрудником",         sqlName: "employee_rating",       type: "FLOAT" },
       { excelHeader: "Оценка сотрудника руководителем",  sqlName: "manager_rating",        type: "FLOAT" },
       { excelHeader: "Количество часов",                 sqlName: "hours",                 type: "FLOAT" },
-      { excelHeader: "Стоимость обучения",               sqlName: "cost",                  type: "DECIMAL(10,2)" },
+      { excelHeader: "Стоимость обучения",               sqlName: "cost",                  type: "DECIMAL(10,3)" },
       { excelHeader: "Срок отработки (мес.)",            sqlName: "commitment_months",     type: "INT" },
       { excelHeader: "Срок погашения доли (30%) (мес.)", sqlName: "repayment_term_months", type: "INT" },
       { excelHeader: "Стоимость обучения (30%)",         sqlName: "cost_30pct",            type: "DECIMAL(10,3)" }
@@ -234,7 +234,7 @@ const importTemplates = [
       { excelHeader: "ФИ наставника",        sqlName: "mentor_name",     type: "NVARCHAR(255)" },
       { excelHeader: "Категория наставника", sqlName: "mentor_category", type: "NVARCHAR(10)" },
       { excelHeader: "Баллы (итого) %",      sqlName: "total_score",     type: "FLOAT" },
-      { excelHeader: "Итоговая сумма",       sqlName: "total_amount",    type: "DECIMAL(10,2)" },
+      { excelHeader: "Итоговая сумма",       sqlName: "total_amount",    type: "DECIMAL(10,3)" },
       { excelHeader: "Статус стажера",       sqlName: "intern_status",   type: "NVARCHAR(12)" }
     ],
     requiredHeaders: ["ИИН стажера", "ИИН наставника"],

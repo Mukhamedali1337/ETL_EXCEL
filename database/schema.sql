@@ -196,7 +196,7 @@ BEGIN
         [employee_rating] FLOAT NULL,
         [manager_rating] FLOAT NULL,
         [hours] FLOAT NULL,
-        [cost] DECIMAL(10,2) NULL,
+        [cost] DECIMAL(10,3) NULL,
         [commitment_months] INT NULL,
         [repayment_term_months] INT NULL,
         [cost_30pct] DECIMAL(10,3) NULL,
@@ -259,7 +259,7 @@ BEGIN
         [mentor_name] NVARCHAR(255) NULL,
         [mentor_category] NVARCHAR(10) NULL,
         [total_score] FLOAT NULL,
-        [total_amount] DECIMAL(10,2) NULL,
+        [total_amount] DECIMAL(10,3) NULL,
         [intern_status] NVARCHAR(12) NULL,
         [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
         [_imported_by] NVARCHAR(100) NULL
@@ -322,6 +322,14 @@ GO
 -- vendor_training: rename iin → employee_iin
 IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.vendor_training') AND name = 'iin')
     EXEC sp_rename 'dbo.vendor_training.iin', 'employee_iin', 'COLUMN';
+GO
+
+-- external_training: cost DECIMAL(10,2) → DECIMAL(10,3)
+ALTER TABLE [dbo].[external_training] ALTER COLUMN [cost] DECIMAL(10,3) NULL;
+GO
+
+-- mentorship_program: total_amount DECIMAL(10,2) → DECIMAL(10,3)
+ALTER TABLE [dbo].[mentorship_program] ALTER COLUMN [total_amount] DECIMAL(10,3) NULL;
 GO
 
 -- mentorship_program: drop obsolete columns, change total_score INT→FLOAT, add intern_status
