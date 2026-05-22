@@ -80,7 +80,7 @@ async function finalizeBatch(batchId, status, insertedRows, notes) {
     SET status = ${status},
         inserted_rows = ${insertedRows},
         notes = ${notes || null},
-        completed_at = SYSUTCDATETIME()
+        completed_at = DATEADD(hour, 5, SYSUTCDATETIME())
     WHERE id = ${batchId}
   `;
 }

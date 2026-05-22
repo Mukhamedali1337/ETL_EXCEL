@@ -9,7 +9,7 @@ BEGIN
         [course_name] NVARCHAR(255) NOT NULL,
         [completion_date] DATE NOT NULL,
         [score] INT NOT NULL,
-        [created_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+        [created_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME())
     );
 
     CREATE UNIQUE INDEX UX_training_records_unique_import
@@ -31,7 +31,7 @@ BEGIN
         [inserted_rows] INT NOT NULL DEFAULT 0,
         [status] NVARCHAR(50) NOT NULL,
         [notes] NVARCHAR(MAX) NULL,
-        [created_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        [created_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [completed_at] DATETIME2 NULL
     );
 
@@ -49,7 +49,7 @@ BEGIN
         [table_name] NVARCHAR(128) NULL,
         [row_count] INT NULL,
         [uploaded_by] NVARCHAR(100) NULL,
-        [uploaded_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+        [uploaded_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME())
     );
 
     CREATE UNIQUE INDEX UX_free_import_batches_hash
@@ -74,7 +74,7 @@ BEGIN
         [username] NVARCHAR(100) NOT NULL PRIMARY KEY,
         [role] NVARCHAR(50) NOT NULL DEFAULT 'trainer',
         [granted_by] NVARCHAR(100) NULL,
-        [granted_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+        [granted_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME())
     );
 END;
 GO
@@ -86,7 +86,7 @@ BEGIN
         [display_name] NVARCHAR(255) NULL,
         [description] NVARCHAR(1000) NULL,
         [updated_by] NVARCHAR(100) NULL,
-        [updated_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+        [updated_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME())
     );
 END;
 GO
@@ -99,7 +99,7 @@ BEGIN
         [row_number] INT NULL,
         [field_name] NVARCHAR(100) NULL,
         [error_message] NVARCHAR(1000) NOT NULL,
-        [created_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME(),
+        [created_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         CONSTRAINT FK_import_errors_batch FOREIGN KEY ([batch_id]) REFERENCES [dbo].[import_batches]([id])
     );
 END;
@@ -116,7 +116,7 @@ BEGIN
         [position] NVARCHAR(255) NULL,
         [attended] NVARCHAR(20) NULL,
         [trainer_iin] NVARCHAR(12) NULL,
-        [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
+        [_imported_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [_imported_by] NVARCHAR(100) NULL
     );
 END;
@@ -140,7 +140,7 @@ BEGIN
         [payment_fixed] DECIMAL(10,3) NULL,
         [payment_bonus] DECIMAL(10,3) NULL,
         [has_certificate] NVARCHAR(20) NULL,
-        [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
+        [_imported_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [_imported_by] NVARCHAR(100) NULL
     );
 END;
@@ -157,7 +157,7 @@ BEGIN
         [employee_name] NVARCHAR(255) NULL,
         [bonus_score] FLOAT NULL,
         [confirmed] NVARCHAR(5) NULL,
-        [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
+        [_imported_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [_imported_by] NVARCHAR(100) NULL
     );
 END;
@@ -178,7 +178,7 @@ BEGIN
         [homework_deadline_score] FLOAT NULL,
         [homework_quality_score] FLOAT NULL,
         [completed] NVARCHAR(12) NULL,
-        [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
+        [_imported_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [_imported_by] NVARCHAR(100) NULL
     );
 END;
@@ -200,7 +200,7 @@ BEGIN
         [commitment_months] INT NULL,
         [repayment_term_months] INT NULL,
         [cost_30pct] DECIMAL(10,3) NULL,
-        [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
+        [_imported_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [_imported_by] NVARCHAR(100) NULL
     );
 END;
@@ -223,7 +223,7 @@ BEGIN
         [manager_rating] FLOAT NULL,
         [hours] FLOAT NULL,
         [conduct_cost] DECIMAL(10,3) NULL,
-        [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
+        [_imported_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [_imported_by] NVARCHAR(100) NULL
     );
 END;
@@ -243,7 +243,7 @@ BEGIN
         [attended] NVARCHAR(20) NULL,
         [score] FLOAT NULL,
         [hours] FLOAT NULL,
-        [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
+        [_imported_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [_imported_by] NVARCHAR(100) NULL
     );
 END;
@@ -261,7 +261,7 @@ BEGIN
         [total_score] FLOAT NULL,
         [total_amount] DECIMAL(10,3) NULL,
         [intern_status] NVARCHAR(12) NULL,
-        [_imported_at] DATETIME2 NOT NULL DEFAULT GETDATE(),
+        [_imported_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [_imported_by] NVARCHAR(100) NULL
     );
 END;
@@ -358,21 +358,81 @@ IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentor
     ALTER TABLE [dbo].[mentorship_program] ADD [intern_status] NVARCHAR(12) NULL;
 GO
 
--- portal_login_log: change logged_at DEFAULT from UTC to Kazakhstan local time (UTC+5)
-DECLARE @df_name NVARCHAR(256);
-SELECT @df_name = d.name
-  FROM sys.default_constraints d
-  JOIN sys.columns c ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id
-  WHERE d.parent_object_id = OBJECT_ID('dbo.portal_login_log') AND c.name = 'logged_at';
-IF @df_name IS NOT NULL
-    EXEC('ALTER TABLE [dbo].[portal_login_log] DROP CONSTRAINT [' + @df_name + ']');
-IF NOT EXISTS (
-    SELECT 1 FROM sys.default_constraints d
-    JOIN sys.columns c ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id
-    WHERE d.parent_object_id = OBJECT_ID('dbo.portal_login_log') AND c.name = 'logged_at'
-)
-    ALTER TABLE [dbo].[portal_login_log]
-        ADD CONSTRAINT DF_portal_login_log_logged_at
-        DEFAULT DATEADD(hour, 5, SYSUTCDATETIME())
-        FOR [logged_at];
+-- Fix all UTC timestamp defaults to UTC+5 (Kazakhstan unified timezone since 2024)
+DECLARE @df NVARCHAR(256);
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.portal_login_log') AND c.name='logged_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[portal_login_log] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.portal_login_log') AND c.name='logged_at')
+    ALTER TABLE [dbo].[portal_login_log] ADD CONSTRAINT DF_portal_login_log_logged_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [logged_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.training_records') AND c.name='created_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[training_records] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.training_records') AND c.name='created_at')
+    ALTER TABLE [dbo].[training_records] ADD CONSTRAINT DF_training_records_created_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [created_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.import_batches') AND c.name='created_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[import_batches] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.import_batches') AND c.name='created_at')
+    ALTER TABLE [dbo].[import_batches] ADD CONSTRAINT DF_import_batches_created_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [created_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.free_import_batches') AND c.name='uploaded_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[free_import_batches] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.free_import_batches') AND c.name='uploaded_at')
+    ALTER TABLE [dbo].[free_import_batches] ADD CONSTRAINT DF_free_import_batches_uploaded_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [uploaded_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.portal_roles') AND c.name='granted_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[portal_roles] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.portal_roles') AND c.name='granted_at')
+    ALTER TABLE [dbo].[portal_roles] ADD CONSTRAINT DF_portal_roles_granted_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [granted_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.portal_template_labels') AND c.name='updated_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[portal_template_labels] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.portal_template_labels') AND c.name='updated_at')
+    ALTER TABLE [dbo].[portal_template_labels] ADD CONSTRAINT DF_portal_template_labels_updated_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [updated_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.import_errors') AND c.name='created_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[import_errors] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.import_errors') AND c.name='created_at')
+    ALTER TABLE [dbo].[import_errors] ADD CONSTRAINT DF_import_errors_created_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [created_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.welcome_attendance') AND c.name='_imported_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[welcome_attendance] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.welcome_attendance') AND c.name='_imported_at')
+    ALTER TABLE [dbo].[welcome_attendance] ADD CONSTRAINT DF_welcome_attendance_imported_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [_imported_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.internal_trainer_sessions') AND c.name='_imported_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[internal_trainer_sessions] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.internal_trainer_sessions') AND c.name='_imported_at')
+    ALTER TABLE [dbo].[internal_trainer_sessions] ADD CONSTRAINT DF_internal_trainer_sessions_imported_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [_imported_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.attestation') AND c.name='_imported_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[attestation] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.attestation') AND c.name='_imported_at')
+    ALTER TABLE [dbo].[attestation] ADD CONSTRAINT DF_attestation_imported_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [_imported_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.school_sessions') AND c.name='_imported_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[school_sessions] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.school_sessions') AND c.name='_imported_at')
+    ALTER TABLE [dbo].[school_sessions] ADD CONSTRAINT DF_school_sessions_imported_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [_imported_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.external_training') AND c.name='_imported_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[external_training] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.external_training') AND c.name='_imported_at')
+    ALTER TABLE [dbo].[external_training] ADD CONSTRAINT DF_external_training_imported_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [_imported_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.internal_training') AND c.name='_imported_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[internal_training] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.internal_training') AND c.name='_imported_at')
+    ALTER TABLE [dbo].[internal_training] ADD CONSTRAINT DF_internal_training_imported_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [_imported_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.vendor_training') AND c.name='_imported_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[vendor_training] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.vendor_training') AND c.name='_imported_at')
+    ALTER TABLE [dbo].[vendor_training] ADD CONSTRAINT DF_vendor_training_imported_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [_imported_at];
+
+SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.mentorship_program') AND c.name='_imported_at';
+IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[mentorship_program] DROP CONSTRAINT ['+@df+']');
+IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.mentorship_program') AND c.name='_imported_at')
+    ALTER TABLE [dbo].[mentorship_program] ADD CONSTRAINT DF_mentorship_program_imported_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [_imported_at];
 GO

@@ -164,7 +164,7 @@ async function createTable(tableName, columns) {
     CREATE TABLE [dbo].[${safeName}] (
       [_id] INT IDENTITY(1,1) PRIMARY KEY,
 ${colDefs},
-      [_imported_at] DATETIME2 DEFAULT GETDATE(),
+      [_imported_at] DATETIME2 DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
       [_imported_by] NVARCHAR(100) NULL
     )
   `);
@@ -192,7 +192,7 @@ async function insertFreeRows(tableName, columns, rows, importedBy, tableAlready
         CREATE TABLE [dbo].[${safeName}] (
           [_id] INT IDENTITY(1,1) PRIMARY KEY,
 ${colDefs},
-          [_imported_at] DATETIME2 DEFAULT GETDATE(),
+          [_imported_at] DATETIME2 DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
           [_imported_by] NVARCHAR(100) NULL
         )
       `);
@@ -352,7 +352,7 @@ async function upsertFreeRows(tableName, columns, rows, importedBy, keyColIndexe
         CREATE TABLE [dbo].[${safeName}] (
           [_id] INT IDENTITY(1,1) PRIMARY KEY,
 ${colDefs},
-          [_imported_at] DATETIME2 DEFAULT GETDATE(),
+          [_imported_at] DATETIME2 DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
           [_imported_by] NVARCHAR(100) NULL
         )
       `);

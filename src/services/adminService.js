@@ -51,7 +51,7 @@ async function grantRole(username, role, grantedBy) {
       MERGE [dbo].[portal_roles] AS target
       USING (VALUES (@u, @r, @g)) AS src (username, role, granted_by)
         ON target.username = src.username
-      WHEN MATCHED THEN UPDATE SET role = src.role, granted_by = src.granted_by, granted_at = SYSUTCDATETIME()
+      WHEN MATCHED THEN UPDATE SET role = src.role, granted_by = src.granted_by, granted_at = DATEADD(hour, 5, SYSUTCDATETIME())
       WHEN NOT MATCHED THEN INSERT (username, role, granted_by) VALUES (src.username, src.role, src.granted_by);
     `);
 }
@@ -130,7 +130,7 @@ async function saveTemplateLabel(templateId, displayName, description, updatedBy
       USING (VALUES (@id, @name, @desc, @by)) AS src (template_id, display_name, description, updated_by)
         ON target.template_id = src.template_id
       WHEN MATCHED THEN UPDATE SET display_name = src.display_name, description = src.description,
-                                    updated_by = src.updated_by, updated_at = SYSUTCDATETIME()
+                                    updated_by = src.updated_by, updated_at = DATEADD(hour, 5, SYSUTCDATETIME())
       WHEN NOT MATCHED THEN INSERT (template_id, display_name, description, updated_by)
                              VALUES (src.template_id, src.display_name, src.description, src.updated_by);
     `);
