@@ -12,7 +12,7 @@ async function logLogin(username, displayName) {
     await pool.request()
       .input("u", sql.NVarChar(100), username)
       .input("d", sql.NVarChar(255), displayName || null)
-      .query("INSERT INTO [dbo].[portal_login_log] (username, display_name, logged_at) VALUES (@u, @d, CAST(SYSDATETIMEOFFSET() AT TIME ZONE 'Central Asia Standard Time' AS DATETIME2))");
+      .query("INSERT INTO [dbo].[portal_login_log] (username, display_name, logged_at) VALUES (@u, @d, DATEADD(hour, 5, SYSUTCDATETIME()))");
   } catch {
     // non-critical, swallow errors
   }

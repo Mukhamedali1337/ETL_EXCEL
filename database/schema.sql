@@ -63,7 +63,7 @@ BEGIN
         [id] INT IDENTITY(1,1) PRIMARY KEY,
         [username] NVARCHAR(100) NOT NULL,
         [display_name] NVARCHAR(255) NULL,
-        [logged_at] DATETIME2 NOT NULL DEFAULT CAST(SYSDATETIMEOFFSET() AT TIME ZONE 'Central Asia Standard Time' AS DATETIME2)
+        [logged_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME())
     );
 END;
 GO
@@ -373,6 +373,6 @@ IF NOT EXISTS (
 )
     ALTER TABLE [dbo].[portal_login_log]
         ADD CONSTRAINT DF_portal_login_log_logged_at
-        DEFAULT CAST(SYSDATETIMEOFFSET() AT TIME ZONE 'Central Asia Standard Time' AS DATETIME2)
+        DEFAULT DATEADD(hour, 5, SYSUTCDATETIME())
         FOR [logged_at];
 GO
