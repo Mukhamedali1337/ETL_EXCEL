@@ -63,7 +63,7 @@ BEGIN
         [id] INT IDENTITY(1,1) PRIMARY KEY,
         [username] NVARCHAR(100) NOT NULL,
         [display_name] NVARCHAR(255) NULL,
-        [logged_at] DATETIME2 NOT NULL DEFAULT SYSUTCDATETIME()
+        [logged_at] DATETIME2 NOT NULL DEFAULT CAST(SYSDATETIMEOFFSET() AT TIME ZONE 'Central Asia Standard Time' AS DATETIME2)
     );
 END;
 GO
@@ -356,4 +356,23 @@ IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship
 ALTER TABLE [dbo].[mentorship_program] ALTER COLUMN [total_score] FLOAT NULL;
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship_program') AND name = 'intern_status')
     ALTER TABLE [dbo].[mentorship_program] ADD [intern_status] NVARCHAR(12) NULL;
+GO
+
+-- portal_login_log: change logged_at DEFAULT from UTC to Kazakhstan local time (UTC+5)
+DECLARE @df_name NVARCHAR(256);
+SELECT @df_name = d.name
+  FROM sys.default_constraints d
+  JOIN sys.columns c ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id
+  WHERE d.parent_object_id = OBJECT_ID('dbo.portal_login_log') AND c.name = 'logged_at';
+IF @df_name IS NOT NULL
+    EXEC('ALTER TABLE [dbo].[portal_login_log] DROP CONSTRAINT [' + @df_name + ']');
+IF NOT EXISTS (
+    SELECT 1 FROM sys.default_constraints d
+    JOIN sys.columns c ON d.parent_object_id = c.object_id AND d.parent_column_id = c.column_id
+    WHERE d.parent_object_id = OBJECT_ID('dbo.portal_login_log') AND c.name = 'logged_at'
+)
+    ALTER TABLE [dbo].[portal_login_log]
+        ADD CONSTRAINT DF_portal_login_log_logged_at
+        DEFAULT CAST(SYSDATETIMEOFFSET() AT TIME ZONE 'Central Asia Standard Time' AS DATETIME2)
+        FOR [logged_at];
 GO
