@@ -210,8 +210,9 @@ const importTemplates = [
       { excelHeader: "ИИН сотрудника",   sqlName: "employee_iin",  type: "NVARCHAR(20)" },
       { excelHeader: "ФИ сотрудника",    sqlName: "employee_name", type: "NVARCHAR(255)" },
       { excelHeader: "Явка/неявка",      sqlName: "attended",      type: "NVARCHAR(20)" },
-      { excelHeader: "Набранный балл %", sqlName: "score",         type: "FLOAT" },
-      { excelHeader: "Часы",             sqlName: "hours",         type: "FLOAT" }
+      { excelHeader: "Набранный балл %", sqlName: "score",            type: "FLOAT" },
+      { excelHeader: "Часы",             sqlName: "hours",            type: "FLOAT" },
+      { excelHeader: "Оценка тренинга",  sqlName: "training_rating",  type: "FLOAT" }
     ],
     requiredHeaders: ["Дата", "ИИН сотрудника", "Вендор"],
     rules: [
@@ -234,13 +235,11 @@ const importTemplates = [
       { excelHeader: "ФИ наставника",        sqlName: "mentor_name",     type: "NVARCHAR(255)" },
       { excelHeader: "Категория наставника", sqlName: "mentor_category", type: "NVARCHAR(10)" },
       { excelHeader: "Баллы (итого) %",      sqlName: "total_score",     type: "FLOAT" },
-      { excelHeader: "Итоговая сумма",       sqlName: "total_amount",    type: "DECIMAL(10,3)" },
-      { excelHeader: "Статус стажера",       sqlName: "intern_status",   type: "NVARCHAR(12)" }
+      { excelHeader: "Итоговая сумма",       sqlName: "total_amount",    type: "DECIMAL(10,3)" }
     ],
     requiredHeaders: ["ИИН стажера", "ИИН наставника"],
     rules: [
       "Категория наставника — только латиница: A / B / A1 / B1",
-      "Статус стажера — строго: работает / не работает",
       "Баллы (итого) % — только число без знака %"
     ]
   }

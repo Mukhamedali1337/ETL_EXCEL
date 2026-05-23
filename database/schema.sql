@@ -243,6 +243,7 @@ BEGIN
         [attended] NVARCHAR(20) NULL,
         [score] FLOAT NULL,
         [hours] FLOAT NULL,
+        [training_rating] FLOAT NULL,
         [_imported_at] DATETIME2 NOT NULL DEFAULT DATEADD(hour, 5, SYSUTCDATETIME()),
         [_imported_by] NVARCHAR(100) NULL
     );
@@ -435,4 +436,8 @@ SET @df = NULL; SELECT @df = d.name FROM sys.default_constraints d JOIN sys.colu
 IF @df IS NOT NULL EXEC('ALTER TABLE [dbo].[mentorship_program] DROP CONSTRAINT ['+@df+']');
 IF NOT EXISTS(SELECT 1 FROM sys.default_constraints d JOIN sys.columns c ON d.parent_object_id=c.object_id AND d.parent_column_id=c.column_id WHERE d.parent_object_id=OBJECT_ID('dbo.mentorship_program') AND c.name='_imported_at')
     ALTER TABLE [dbo].[mentorship_program] ADD CONSTRAINT DF_mentorship_program_imported_at DEFAULT DATEADD(hour,5,SYSUTCDATETIME()) FOR [_imported_at];
+
+-- vendor_training: add training_rating column
+IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.vendor_training') AND name = 'training_rating')
+    ALTER TABLE [dbo].[vendor_training] ADD [training_rating] FLOAT NULL;
 GO
