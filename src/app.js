@@ -87,12 +87,13 @@ app.use((req, res, next) => {
   res.locals.importTemplates = importTemplates;
   res.locals.fmtVal = function(v, max = 40) {
     if (v === null || v === undefined) return "—";
-    if (v instanceof Date && !isNaN(v)) {
-      const dd = String(v.getUTCDate()).padStart(2, "0");
-      const mm = String(v.getUTCMonth() + 1).padStart(2, "0");
-      const yyyy = v.getUTCFullYear();
-      const hh = v.getUTCHours();
-      const mi = v.getUTCMinutes();
+    const d = v instanceof Date ? v : (typeof v === "string" && /^\d{4}-\d{2}-\d{2}T/.test(v) ? new Date(v) : null);
+    if (d && !isNaN(d)) {
+      const dd = String(d.getUTCDate()).padStart(2, "0");
+      const mm = String(d.getUTCMonth() + 1).padStart(2, "0");
+      const yyyy = d.getUTCFullYear();
+      const hh = d.getUTCHours();
+      const mi = d.getUTCMinutes();
       if (hh === 0 && mi === 0) return `${dd}.${mm}.${yyyy}`;
       return `${dd}.${mm}.${yyyy} ${String(hh).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
     }
