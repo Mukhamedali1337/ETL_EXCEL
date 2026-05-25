@@ -23,7 +23,7 @@
             <tr>
               <% columns.forEach(col => { %>
                 <td class="muted" style="font-size:0.9em; max-width:200px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                  <%= row[col] !== null && row[col] !== undefined ? String(row[col]).slice(0, 80) : '—' %>
+                  <%= fmtVal(row[col], 80) %>
                 </td>
               <% }) %>
             </tr>

@@ -76,12 +76,12 @@ function parseTemplateExcel(filePath, template) {
 
   const fileHeaders = Object.keys(rawRows[0]).map((h) => String(h).trim());
 
-  // Check required headers are present
-  const missing = template.requiredHeaders.filter(
-    (rh) => !fileHeaders.some((fh) => matchHeader(fh, rh))
-  );
+  // Check all template columns are present in the file
+  const missing = template.columns
+    .filter((col) => !fileHeaders.some((fh) => matchHeader(fh, col.excelHeader)))
+    .map((col) => col.excelHeader);
   if (missing.length > 0) {
-    throw new Error(`В файле отсутствуют обязательные столбцы: ${missing.join(", ")}`);
+    throw new Error(`В файле отсутствуют столбцы: ${missing.join(", ")}`);
   }
 
   const errors = [];

@@ -85,6 +85,19 @@ app.use((req, res, next) => {
   res.locals.preview = req.session.preview || null;
   res.locals.freePreview = req.session.freePreview || null;
   res.locals.importTemplates = importTemplates;
+  res.locals.fmtVal = function(v, max = 40) {
+    if (v === null || v === undefined) return "—";
+    if (v instanceof Date && !isNaN(v)) {
+      const dd = String(v.getUTCDate()).padStart(2, "0");
+      const mm = String(v.getUTCMonth() + 1).padStart(2, "0");
+      const yyyy = v.getUTCFullYear();
+      const hh = v.getUTCHours();
+      const mi = v.getUTCMinutes();
+      if (hh === 0 && mi === 0) return `${dd}.${mm}.${yyyy}`;
+      return `${dd}.${mm}.${yyyy} ${String(hh).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+    }
+    return String(v).slice(0, max);
+  };
   next();
 });
 

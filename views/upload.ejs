@@ -134,7 +134,7 @@
                   <tr>
                     <% preview.columns.forEach(col => { %>
                       <td class="muted" style="font-size:0.9em; max-width:160px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">
-                        <%= row[col.sqlName] !== null && row[col.sqlName] !== undefined ? String(row[col.sqlName]).slice(0, 40) : "—" %>
+                        <%= fmtVal(row[col.sqlName]) %>
                       </td>
                     <% }) %>
                   </tr>

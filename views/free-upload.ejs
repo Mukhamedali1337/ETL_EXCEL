@@ -240,7 +240,7 @@
                 </td>
                 <% freePreview.sampleRows.forEach(row => { %>
                   <td class="muted" style="font-size:0.9em;">
-                    <%= row[col.originalName] !== null && row[col.originalName] !== undefined ? String(row[col.originalName]).slice(0, 40) : "—" %>
+                    <%= fmtVal(row[col.originalName]) %>
                   </td>
                 <% }) %>
               </tr>
