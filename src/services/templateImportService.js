@@ -209,4 +209,69 @@ async function insertTemplateRows(template, rows, importedBy) {
   return { inserted: insertedCount, skippedRows };
 }
 
-module.exports = { parseTemplateExcel, insertTemplateRows };
+async function replaceTemplateRows(template, rows, importedBy) {
+  const pool = await getPool();
+  const safeName = template.tableName;
+  const allCols = [...template.columns, ...(template.autoFields || [])];
+  const colNames = allCols.map((c) => `[${c.sqlName}]`).join(", ");
+  const paramRefs = allCols.map((_, i) => `@c${i}`).join(", ");
+
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+  try {
+    await new sql.Request(transaction).query(`TRUNCATE TABLE [dbo].[${safeName}]`);
+    for (const row of rows) {
+      const req = new sql.Request(transaction);
+      allCols.forEach((col, i) => req.input(`c${i}`, getSqlType(col.type), row[col.sqlName] ?? null));
+      req.input("imp", sql.NVarChar(100), importedBy || null);
+      await req.query(`INSERT INTO [dbo].[${safeName}] (${colNames}, [_imported_by]) VALUES (${paramRefs}, @imp)`);
+    }
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+  return { inserted: rows.length, skippedRows: [] };
+}
+
+async function upsertTemplateRows(template, rows, importedBy, keyColNames) {
+  const pool = await getPool();
+  const safeName = template.tableName;
+  const allCols = [...template.columns, ...(template.autoFields || [])];
+  const keyCols  = allCols.filter((c) =>  keyColNames.includes(c.sqlName));
+  const valueCols = allCols.filter((c) => !keyColNames.includes(c.sqlName));
+
+  const transaction = new sql.Transaction(pool);
+  await transaction.begin();
+  let count = 0;
+  try {
+    for (const row of rows) {
+      const req = new sql.Request(transaction);
+      allCols.forEach((col, i) => req.input(`c${i}`, getSqlType(col.type), row[col.sqlName] ?? null));
+      req.input("imp", sql.NVarChar(100), importedBy || null);
+
+      const srcSelect  = allCols.map((c, i) => `@c${i} AS [${c.sqlName}]`).join(", ");
+      const onClause   = keyCols.map((c) => `target.[${c.sqlName}] = src.[${c.sqlName}]`).join(" AND ");
+      const updateSet  = valueCols.length > 0
+        ? valueCols.map((c) => `target.[${c.sqlName}] = src.[${c.sqlName}]`).join(", ") + ", target.[_imported_by] = @imp"
+        : "target.[_imported_by] = @imp";
+      const insertCols = allCols.map((c) => `[${c.sqlName}]`).join(", ");
+      const insertVals = allCols.map((c) => `src.[${c.sqlName}]`).join(", ");
+
+      await req.query(`
+        MERGE [dbo].[${safeName}] AS target
+        USING (SELECT ${srcSelect}) AS src ON (${onClause})
+        WHEN MATCHED THEN UPDATE SET ${updateSet}
+        WHEN NOT MATCHED THEN INSERT (${insertCols}, [_imported_by]) VALUES (${insertVals}, @imp);
+      `);
+      count++;
+    }
+    await transaction.commit();
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
+  }
+  return { inserted: count, skippedRows: [] };
+}
+
+module.exports = { parseTemplateExcel, insertTemplateRows, replaceTemplateRows, upsertTemplateRows };

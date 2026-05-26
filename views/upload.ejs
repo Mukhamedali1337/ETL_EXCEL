@@ -110,11 +110,7 @@
             <span>Пропущено (дубли)</span>
           </div>
         </div>
-        <form method="post" action="/import" style="margin-top:16px;">
-          <button class="primary-button" type="submit" <%= preview.validRows.length === 0 ? "disabled" : "" %>>
-            Подтвердить импорт
-          </button>
-        </form>
+        <p class="muted" style="margin-top:16px; font-size:0.85em;">Выберите режим импорта ниже и нажмите «Импортировать».</p>
       </div>
 
       <div class="card">
@@ -164,6 +160,56 @@
         </div>
       </section>
     <% } %>
+
+  <form method="post" action="/import">
+    <section class="card" style="margin-bottom:20px;">
+      <h2>Режим импорта</h2>
+      <div style="display:flex; gap:12px; flex-wrap:wrap; margin-top:12px;">
+        <label style="display:flex; align-items:flex-start; gap:10px; padding:14px 18px; border:2px solid var(--border,#ccc); border-radius:8px; cursor:pointer; flex:1; min-width:180px; background:var(--bg,#fff);">
+          <input type="radio" name="mode" value="insert" checked style="margin-top:3px; flex-shrink:0;" />
+          <div>
+            <strong style="display:block; margin-bottom:4px;">INSERT</strong>
+            <span class="muted" style="font-size:0.85em;">Добавить новые строки, пропустить дубли</span>
+          </div>
+        </label>
+        <label style="display:flex; align-items:flex-start; gap:10px; padding:14px 18px; border:2px solid var(--border,#ccc); border-radius:8px; cursor:pointer; flex:1; min-width:180px; background:var(--bg,#fff);">
+          <input type="radio" name="mode" value="replace" style="margin-top:3px; flex-shrink:0;" />
+          <div>
+            <strong style="display:block; margin-bottom:4px;">REPLACE</strong>
+            <span class="muted" style="font-size:0.85em;">Очистить таблицу и залить заново</span>
+          </div>
+        </label>
+        <label style="display:flex; align-items:flex-start; gap:10px; padding:14px 18px; border:2px solid var(--border,#ccc); border-radius:8px; cursor:pointer; flex:1; min-width:180px; background:var(--bg,#fff);">
+          <input type="radio" name="mode" value="upsert" style="margin-top:3px; flex-shrink:0;" />
+          <div>
+            <strong style="display:block; margin-bottom:4px;">UPSERT</strong>
+            <span class="muted" style="font-size:0.85em;">Обновить существующие, добавить новые</span>
+          </div>
+        </label>
+      </div>
+
+      <div id="import-replace-warning" style="display:none; margin-top:12px; padding:12px 16px; background:#fff3cd; border:1px solid #ffc107; border-radius:6px; color:#856404;">
+        <strong>Внимание:</strong> Если таблица уже содержит данные, все они будут удалены перед загрузкой. Это действие необратимо.
+      </div>
+
+      <div id="import-upsert-keys" style="display:none; margin-top:14px;">
+        <p style="margin-bottom:10px;"><strong>Ключевые столбцы</strong> — по ним система ищет совпадающие записи для обновления:</p>
+        <div style="display:flex; flex-wrap:wrap; gap:8px;">
+          <% preview.columns.forEach((col) => { %>
+            <label style="display:inline-flex; align-items:center; gap:6px; padding:6px 12px; border:1px solid var(--border,#ccc); border-radius:6px; cursor:pointer; background:var(--bg-alt,#f4f4f4); font-size:0.9em;">
+              <input type="checkbox" name="keyColumns" value="<%= col.sqlName %>" />
+              <code><%= col.excelHeader %></code>
+            </label>
+          <% }) %>
+        </div>
+      </div>
+    </section>
+
+    <div style="display:flex; gap:12px; align-items:center; margin-bottom:32px;">
+      <button class="primary-button" type="submit" <%= preview.validRows.length === 0 ? "disabled" : "" %>>Импортировать в базу</button>
+      <a href="/upload?template=<%= preview.templateType %>&reset=1" style="color:var(--muted);">Отмена — загрузить другой файл</a>
+    </div>
+  </form>
 
   <% } else { %>
     <%# ── Старый шаблон training_records ── %>
@@ -256,4 +302,15 @@
 
 <% } %>
 
+<script>
+  const modeRadios = document.querySelectorAll('[name="mode"]');
+  const replaceWarn = document.getElementById('import-replace-warning');
+  const upsertKeys  = document.getElementById('import-upsert-keys');
+  function updateImportMode() {
+    const mode = document.querySelector('[name="mode"]:checked')?.value;
+    if (replaceWarn) replaceWarn.style.display = mode === 'replace' ? 'block' : 'none';
+    if (upsertKeys)  upsertKeys.style.display  = mode === 'upsert'  ? 'block' : 'none';
+  }
+  modeRadios.forEach(r => r.addEventListener('change', updateImportMode));
+</script>
 <%- include("partials/footer") %>

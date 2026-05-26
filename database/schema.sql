@@ -444,4 +444,8 @@ IF EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.mentorship
 -- vendor_training: add training_rating column
 IF NOT EXISTS (SELECT 1 FROM sys.columns WHERE object_id = OBJECT_ID('dbo.vendor_training') AND name = 'training_rating')
     ALTER TABLE [dbo].[vendor_training] ADD [training_rating] FLOAT NULL;
+
+-- import_batches: drop unique index on file_hash (REPLACE/UPSERT need to re-upload same file)
+IF EXISTS (SELECT 1 FROM sys.indexes WHERE name = 'UX_import_batches_file_hash' AND object_id = OBJECT_ID('dbo.import_batches'))
+    DROP INDEX [UX_import_batches_file_hash] ON [dbo].[import_batches];
 GO

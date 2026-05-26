@@ -10,7 +10,7 @@ const { verifyUser } = require("./services/authService");
 const { logLogin, getUserRole } = require("./services/adminService");
 const adminRouter = require("./routes/admin");
 const { parseWorkbook } = require("./services/excelService");
-const { parseTemplateExcel, insertTemplateRows } = require("./services/templateImportService");
+const { parseTemplateExcel, insertTemplateRows, replaceTemplateRows, upsertTemplateRows } = require("./services/templateImportService");
 const {
   importTemplates,
   getTemplateById,
@@ -140,6 +140,7 @@ app.post("/logout", requireAuth, (req, res) => {
 });
 
 app.get("/upload", requireTrainer, (req, res) => {
+  if (req.query.reset) req.session.preview = null;
   const requestedTemplateId = req.query.template || defaultTemplateId;
   const selectedTemplate =
     getTemplateById(requestedTemplateId) || getTemplateById(defaultTemplateId);
@@ -148,7 +149,8 @@ app.get("/upload", requireTrainer, (req, res) => {
     error: null,
     success: null,
     selectedTemplate,
-    templates: importTemplates
+    templates: importTemplates,
+    preview: req.session.preview || null
   });
 });
 
@@ -192,14 +194,6 @@ app.post("/upload", requireTrainer, upload.single("excelFile"), async (req, res)
     if (selectedTemplate.columns) {
       // ── New template-based flow ──────────────────────────────────────────
       const parsed = parseTemplateExcel(filePath, selectedTemplate);
-      const duplicateBatch = await checkDuplicateFile(parsed.fileHash);
-
-      if (duplicateBatch) {
-        return res.status(409).render("upload", {
-          error: `Этот файл уже был загружен ранее. Batch ID: ${duplicateBatch.id}`,
-          success: null, selectedTemplate, templates: importTemplates
-        });
-      }
 
       req.session.preview = {
         isNewTemplate: true,
@@ -297,15 +291,26 @@ app.post("/import", requireTrainer, async (req, res) => {
       });
     }
 
-    const duplicateBatch = await checkDuplicateFile(preview.fileHash);
-    if (duplicateBatch) {
-      req.session.preview = null;
-      return res.status(409).render("upload", {
-        error: `Этот файл уже был импортирован. Batch ID: ${duplicateBatch.id}`,
-        success: null,
-        selectedTemplate: previewTemplate,
-        templates: importTemplates
+    const mode = req.body.mode || "insert";
+    const keyColNames = [].concat(req.body.keyColumns || []).filter(Boolean);
+
+    if (mode === "upsert" && keyColNames.length === 0) {
+      return res.render("upload", {
+        error: "Для UPSERT выберите хотя бы один ключевой столбец",
+        success: null, selectedTemplate: previewTemplate, templates: importTemplates,
+        preview: req.session.preview
       });
+    }
+
+    if (mode === "insert" && preview.isNewTemplate) {
+      const duplicateBatch = await checkDuplicateFile(preview.fileHash);
+      if (duplicateBatch) {
+        req.session.preview = null;
+        return res.status(409).render("upload", {
+          error: `Этот файл уже был импортирован. Batch ID: ${duplicateBatch.id}`,
+          success: null, selectedTemplate: previewTemplate, templates: importTemplates
+        });
+      }
     }
 
     const errorRowsCount =
@@ -324,7 +329,7 @@ app.post("/import", requireTrainer, async (req, res) => {
       status: preview.validRows.length > 0 ? "VALIDATED" : "REJECTED",
       notes:
         preview.validRows.length > 0
-          ? `Тип импорта: ${previewTemplate.name}`
+          ? `Тип импорта: ${previewTemplate.name}, режим: ${mode.toUpperCase()}`
           : "Импорт не выполнен: нет валидных строк"
     });
 
@@ -346,9 +351,17 @@ app.post("/import", requireTrainer, async (req, res) => {
     let skippedRows = [];
 
     if (preview.isNewTemplate) {
-      const result = await insertTemplateRows(previewTemplate, preview.validRows, req.session.user.username);
-      insertedRows = result.inserted;
-      skippedRows = result.skippedRows;
+      if (mode === "replace") {
+        const result = await replaceTemplateRows(previewTemplate, preview.validRows, req.session.user.username);
+        insertedRows = result.inserted;
+      } else if (mode === "upsert") {
+        const result = await upsertTemplateRows(previewTemplate, preview.validRows, req.session.user.username, keyColNames);
+        insertedRows = result.inserted;
+      } else {
+        const result = await insertTemplateRows(previewTemplate, preview.validRows, req.session.user.username);
+        insertedRows = result.inserted;
+        skippedRows = result.skippedRows;
+      }
     } else {
       insertedRows = await importRows(batchId, preview.validRows);
     }
