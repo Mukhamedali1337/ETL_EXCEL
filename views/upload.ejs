@@ -7,7 +7,7 @@
     <div class="template-selector">
       <% templates.forEach((template) => { %>
         <a
-          href="/upload?template=<%= template.id %>"
+          href="/upload?template=<%= template.id %>&reset=1"
           class="template-pill <%= selectedTemplate && selectedTemplate.id === template.id ? "template-pill-active" : "" %>"
         >
           <span><%= template.name %></span>
