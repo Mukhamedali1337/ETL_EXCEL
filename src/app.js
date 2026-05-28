@@ -500,7 +500,7 @@ app.post("/free-import", requireAuth, async (req, res) => {
       if (duplicate) {
         const freeTables = await getFreeTableList(username, isAdmin).catch(() => []);
         return res.render("free-upload", {
-          error: `Этот файл уже был загружен ранее (${new Date(duplicate.uploaded_at).toLocaleString("ru-RU")}). Если хотите загрузить другой файл — нажмите «Отмена».`,
+          error: `Этот файл уже был загружен ранее (${res.locals.fmtVal(duplicate.uploaded_at)}). Если хотите загрузить другой файл — нажмите «Отмена».`,
           success: null, freeTables, isAdmin, skippedRows: null
         });
       }

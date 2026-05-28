@@ -40,9 +40,9 @@
           </div>
 
           <p class="muted">
-            Создан: <%= new Date(batch.created_at).toLocaleString("ru-RU") %>
+            Создан: <%= fmtVal(batch.created_at) %>
             <% if (batch.completed_at) { %>
-              · Завершен: <%= new Date(batch.completed_at).toLocaleString("ru-RU") %>
+              · Завершен: <%= fmtVal(batch.completed_at) %>
             <% } %>
           </p>
 
