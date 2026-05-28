@@ -44,7 +44,7 @@
           <tr>
             <td><strong><%= l.username %></strong></td>
             <td><%= l.display_name || '—' %></td>
-            <td class="muted"><%= new Date(l.logged_at).toLocaleString("ru-RU") %></td>
+            <td class="muted"><%= fmtVal(l.logged_at) %></td>
           </tr>
         <% }) %>
         <% if (!recentLogins.length) { %>

@@ -94,8 +94,10 @@ app.use((req, res, next) => {
       const yyyy = d.getUTCFullYear();
       const hh = d.getUTCHours();
       const mi = d.getUTCMinutes();
-      if (hh === 0 && mi === 0) return `${dd}.${mm}.${yyyy}`;
-      return `${dd}.${mm}.${yyyy} ${String(hh).padStart(2, "0")}:${String(mi).padStart(2, "0")}`;
+      const ss = d.getUTCSeconds();
+      if (hh === 0 && mi === 0 && ss === 0) return `${dd}.${mm}.${yyyy}`;
+      const time = `${String(hh).padStart(2, "0")}:${String(mi).padStart(2, "0")}:${String(ss).padStart(2, "0")}`;
+      return `${dd}.${mm}.${yyyy}, ${time}`;
     }
     return String(v).slice(0, max);
   };
